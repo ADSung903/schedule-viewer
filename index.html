@@ -1,37 +1,1438 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Schedule Viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#060a10;color:#d4e8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 25px,#0a1520 25px,#0a1520 26px),repeating-linear-gradient(90deg,transparent,transparent 49px,#0a1520 49px,#0a1520 50px);pointer-events:none;z-index:0;opacity:0.25}
+#app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:16px}
+
+/* ── Upload Screen ── */
+#uploadScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:24px}
+.upload-title{font-size:22px;font-weight:500;color:#7dd3fc;letter-spacing:0.1em;text-transform:uppercase}
+.upload-sub{font-size:11px;color:#3a8aaa;letter-spacing:0.07em}
+.drop-zone{width:480px;border:1px dashed #0d3a5a;border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;background:#06101a;position:relative}
+.drop-zone:hover,.drop-zone.drag{border-color:#0ea5e9;background:#071828;box-shadow:0 0 20px #0ea5e920}
+.drop-icon{font-size:36px;color:#1e5a7a;margin-bottom:12px}
+.drop-text{font-size:14px;color:#6abcd8;margin-bottom:6px}
+.drop-sub{font-size:11px;color:#3a8aaa;letter-spacing:0.05em}
+#fileInput{position:absolute;inset:0;opacity:0;cursor:pointer}
+.btn-upload{background:#061828;border:1px solid #0ea5e9;color:#38bdf8;padding:8px 20px;border-radius:4px;cursor:pointer;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 0 8px #0ea5e920}
+.btn-upload:hover{background:#0a2030;box-shadow:0 0 12px #0ea5e940}
+
+/* ── Warnings ── */
+#warningBox{display:none;width:480px;background:#12080a;border:1px solid #7f1d1d;border-radius:6px;padding:12px 14px}
+.warn-title{font-size:10px;color:#f87171;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px}
+.warn-item{font-size:10px;color:#fca5a5;margin:3px 0;line-height:1.5}
+
+/* ── Main App ── */
+#mainApp{display:none}
+.header{padding:10px 0 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid #0d2d4a;margin-bottom:0}
+.title{font-size:14px;font-weight:500;color:#93e4ff;letter-spacing:0.08em;text-transform:uppercase}
+.subtitle{font-size:10px;color:#3a8aaa;letter-spacing:0.08em;margin-top:2px}
+.controls{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.btn{font-size:10px;padding:3px 9px;border:1px solid #0d3a5a;border-radius:3px;background:transparent;color:#4a9abe;cursor:pointer;letter-spacing:0.06em;text-transform:uppercase}
+.btn:hover{background:#0a2030;color:#7dd3fc;border-color:#1e6090}
+.btn.active{background:#061828;color:#38bdf8;border-color:#0ea5e9;box-shadow:0 0 6px #0ea5e940}
+.btn.cp-on{background:#12100a;color:#fbbf24;border-color:#d97706;box-shadow:0 0 6px #d9770640}
+.btn.sp-on{background:#0a1a12;color:#34d399;border-color:#059669;box-shadow:0 0 6px #05966940}
+.btn.danger{color:#f87171;border-color:#7f1d1d}
+.btn.danger:hover{background:#1a0808;color:#fca5a5}
+.tbadge{font-size:9px;color:#ef4444;padding:2px 7px;border:1px solid #7f1d1d;border-radius:3px;letter-spacing:0.06em}
+
+/* ── Status Panel ── */
+.status-panel{background:#07090f;border-bottom:1px solid #0d2d4a;padding:10px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.status-panel.hidden{display:none}
+.sc{background:#060a10;border:1px solid #0d2d4a;border-radius:4px;padding:8px 10px;position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px}
+.sc.blue::before{background:#0ea5e9;box-shadow:0 0 6px #0ea5e9}
+.sc.green::before{background:#10b981;box-shadow:0 0 6px #10b981}
+.sc.amber::before{background:#f59e0b;box-shadow:0 0 6px #f59e0b}
+.sc.red::before{background:#ef4444;box-shadow:0 0 6px #ef4444}
+.sc.purple::before{background:#a78bfa;box-shadow:0 0 6px #a78bfa}
+.sc-label{font-size:9px;color:#3a8aaa;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px}
+.sc-val{font-size:19px;font-weight:500;color:#f0f8ff;line-height:1}
+.sc-val.amber{color:#fbbf24;text-shadow:0 0 8px #f59e0b60}
+.sc-val.green{color:#34d399;text-shadow:0 0 8px #10b98160}
+.sc-val.red{color:#f87171;text-shadow:0 0 8px #ef444460}
+.sc-sub{font-size:10px;color:#5a9aba;margin-top:3px}
+.prog-wrap{padding:6px 0 8px;background:#07090f;border-bottom:1px solid #0d2d4a}
+.prog-wrap.hidden{display:none}
+.prog-label{font-size:9px;color:#4a9ab8;letter-spacing:0.1em;margin-bottom:4px;text-transform:uppercase}
+.prog-track{background:#0a1520;border-radius:2px;height:5px;position:relative;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#0ea5e9,#38bdf8);position:relative;transition:width 0.6s ease}
+.prog-fill::after{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;background:#7dd3fc;box-shadow:0 0 6px #7dd3fc}
+.ms-list{padding:0 0 8px;background:#07090f;border-bottom:1px solid #0d2d4a}
+.ms-list.hidden{display:none}
+.ms-title{font-size:9px;color:#3a8aaa;letter-spacing:0.1em;text-transform:uppercase;padding:7px 0 5px}
+.ms-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #0a1520;font-size:10px}
+.ms-row:last-child{border:none}
+.ms-dot{width:6px;height:6px;border-radius:1px;transform:rotate(45deg);flex-shrink:0}
+.ms-name{flex:1;color:#7acce8}
+.ms-name.cp{color:#fbbf24}
+.ms-date{color:#5a9aba;white-space:nowrap}
+.ms-delta{font-size:9px;padding:1px 5px;border-radius:2px;white-space:nowrap}
+.ms-delta.future{background:#0a1a12;color:#34d399;border:1px solid #05966940}
+.ms-delta.overdue{background:#1a0808;color:#f87171;border:1px solid #ef444440}
+.ms-delta.soon{background:#12100a;color:#fbbf24;border:1px solid #d9770640}
+
+/* ── Gantt ── */
+.gantt-wrap{overflow-x:auto;overflow-y:auto;max-height:58vh;position:relative;border:1px solid #0d2d4a;border-radius:0 0 6px 6px}
+.gantt-inner{position:relative;min-width:1000px}
+canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
+.gantt-container{min-width:1000px;position:relative;z-index:2}
+.tl-hdr{display:flex;height:28px;border-bottom:1px solid #0d2d4a;background:#06080f;position:sticky;top:0;z-index:10}
+.tl-sp{min-width:200px;max-width:200px;border-right:1px solid #0d2d4a;flex-shrink:0;display:flex;align-items:center;padding-left:8px;font-size:9px;color:#1e5a7a;letter-spacing:0.06em}
+.tl-area{flex:1;position:relative;overflow:hidden}
+.mlabel{position:absolute;font-size:9px;color:#2e7a9a;top:50%;transform:translateY(-50%);padding-left:4px;white-space:nowrap;letter-spacing:0.07em}
+.mline{position:absolute;top:0;bottom:0;width:1px;background:#0a1e30}
+.lane{border-bottom:1px solid #091828}
+.lane-hdr{display:flex;align-items:center;gap:8px;padding:5px 10px;background:#06080f;border-bottom:1px solid #0d2d4a;cursor:pointer;position:sticky;left:0;z-index:8}
+.lane-hdr:hover{background:#080d14}
+.lbadge{font-size:9px;font-weight:500;padding:2px 7px;border-radius:3px;letter-spacing:0.08em;text-transform:uppercase}
+.row{display:flex;align-items:center;height:26px;border-bottom:1px solid #091828}
+.row:hover{background:#080d14}
+.rl{min-width:200px;max-width:200px;padding:0 8px;font-size:11px;color:#5a9aba;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:sticky;left:0;background:#060a10;z-index:4;border-right:1px solid #0d2d4a;height:26px;display:flex;align-items:center}
+.row:hover .rl{background:#080d14}
+.rl.p{font-weight:500;color:#7dc8e8}
+.ca{flex:1;position:relative;height:26px;overflow:visible}
+.bar{position:absolute;height:10px;top:8px;border-radius:2px;cursor:pointer}
+.bar.cp{animation:bpulse 2s ease-in-out infinite}
+.bar.dim{opacity:0.2}
+@keyframes bpulse{0%,100%{filter:brightness(1) drop-shadow(0 0 3px currentColor)}50%{filter:brightness(1.5) drop-shadow(0 0 7px currentColor)}}
+.blbl{position:absolute;font-size:9px;white-space:nowrap;top:9px;pointer-events:none;padding:0 3px}
+.dia{position:absolute;top:50%;transform:translate(-50%,-50%) rotate(45deg);width:8px;height:8px;cursor:pointer}
+.dia.cp{animation:dpulse 1.5s ease-in-out infinite}
+.dia.dim{opacity:0.2}
+@keyframes dpulse{0%,100%{filter:brightness(1) drop-shadow(0 0 4px currentColor)}50%{filter:brightness(2.5) drop-shadow(0 0 12px currentColor)}}
+.todayln{position:absolute;top:0;bottom:0;width:1px;background:#ef4444;z-index:6;pointer-events:none;box-shadow:0 0 5px #ef444480}
+
+/* ── Tooltip ── */
+.tt{position:fixed;background:#06101a;border:1px solid #0ea5e9;border-radius:6px;padding:9px 12px;font-size:10px;pointer-events:none;z-index:999;max-width:260px;display:none;color:#7dd3fc;box-shadow:0 0 16px #0ea5e920}
+.tt-t{font-weight:500;margin-bottom:5px;color:#bae6fd;font-size:11px}
+.tt-r{color:#1e7aaa;margin:2px 0;line-height:1.5}
+.tt-cp{color:#fbbf24;margin-top:4px;font-size:9px}
+
+/* ── Legend ── */
+.legend{display:flex;gap:12px;padding:7px 0;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:10px;color:#3a8aaa}
+.ld{width:10px;height:4px;border-radius:1px}
+
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid #0d2d4a;margin-bottom:0}
+.tab{font-size:11px;padding:6px 14px;cursor:pointer;color:#5a9aba;border-bottom:2px solid transparent;letter-spacing:0.07em;text-transform:uppercase;transition:all 0.15s}
+.tab:hover{color:#7dd3fc}
+.tab.active{color:#38bdf8;border-bottom-color:#0ea5e9}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ── Raw SCH Table ── */
+.sch-wrap{overflow:auto;max-height:72vh;border:1px solid #0d2d4a;border-radius:0 0 6px 6px}
+.sch-table{width:100%;border-collapse:collapse;font-size:10px;min-width:900px}
+.sch-table th{background:#06080f;color:#5aaac0;padding:6px 10px;border-bottom:1px solid #0d2d4a;border-right:1px solid #0d2d4a;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;white-space:nowrap;position:sticky;top:0;z-index:5}
+.sch-table td{padding:5px 10px;border-bottom:1px solid #091828;border-right:1px solid #091828;color:#7abcd8;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+.sch-table tr:hover td{background:#080d14}
+.sch-table td.id-c{color:#1e5a7a;width:50px}
+.sch-table td.task{color:#e0f2ff}
+.sch-table td.task.lv1{padding-left:22px;color:#aacce0}
+.sch-table td.task.lv2{padding-left:38px;color:#7aaabf}
+.sch-table td.pred{color:#a78bfa;font-size:9px;max-width:200px}
+.sch-table td.dur{color:#34d399}
+.sch-table td.date{color:#5aaaca}
+.sch-table tr.is-ms td{background:#0a0d06}
+.sch-table tr.is-ms td.task{color:#fbbf24}
+.sch-table tr.is-cp td.task{color:#f59e0b;text-shadow:0 0 4px #f59e0b40}
+.sch-badge{display:inline-block;font-size:8px;padding:1px 5px;border-radius:2px;margin-left:4px;vertical-align:middle}
+.badge-ms{background:#12100a;color:#fbbf24;border:1px solid #d9770640}
+.badge-cp{background:#06101a;color:#34d399;border:1px solid #05966940}
+.sch-filter{display:flex;gap:8px;align-items:center;padding:8px 0;flex-wrap:wrap}
+.sch-search{background:#06101a;border:1px solid #0d2d4a;border-radius:3px;color:#7dd3fc;padding:4px 10px;font-size:10px;width:200px;outline:none}
+.sch-search:focus{border-color:#0ea5e9}
+.sch-stats{font-size:9px;color:#1e5a7a;letter-spacing:0.06em}
+
+
+/* ── MRD Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal-overlay.hidden{display:none}
+.modal{background:#06101a;border:1px solid #0ea5e9;border-radius:8px;padding:24px 28px;width:480px;max-width:94vw;box-shadow:0 0 40px #0ea5e920}
+.modal-title{font-size:13px;font-weight:500;color:#7dd3fc;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px}
+.modal-sub{font-size:10px;color:#1e5a7a;margin-bottom:18px;line-height:1.6}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.modal-drop{border:1px dashed #0d3a5a;border-radius:6px;padding:24px;text-align:center;cursor:pointer;background:#06080f;position:relative;transition:all 0.2s;margin-bottom:12px}
+.modal-drop:hover,.modal-drop.drag{border-color:#0ea5e9;background:#071828}
+.modal-drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.modal-drop-text{font-size:11px;color:#4a9abe}
+.modal-drop-sub{font-size:9px;color:#1e5a7a;margin-top:4px;letter-spacing:0.05em}
+.api-input{background:#06080f;border:1px solid #0d2d4a;border-radius:3px;color:#7dd3fc;padding:6px 10px;font-size:11px;width:100%;outline:none;font-family:monospace;letter-spacing:0.05em}
+.api-input:focus{border-color:#0ea5e9}
+.api-label{font-size:9px;color:#1e5a7a;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px}
+.api-hint{font-size:9px;color:#1e3a5a;margin-top:5px;line-height:1.5}
+
+/* ── MRD Analysis Tab ── */
+.mrd-wrap{padding:12px 0}
+.mrd-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;gap:12px}
+.mrd-spinner{width:32px;height:32px;border:2px solid #0d2d4a;border-top-color:#0ea5e9;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mrd-loading-text{font-size:11px;color:#1e5a7a;letter-spacing:0.08em}
+.mrd-section{margin-bottom:16px}
+.mrd-section-title{font-size:9px;color:#4a9ab8;letter-spacing:0.1em;text-transform:uppercase;padding:6px 0 6px;border-bottom:1px solid #0d3a5a;margin-bottom:8px}
+.mrd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.mrd-card{background:#06080f;border:1px solid #0d2d4a;border-radius:4px;padding:9px 11px}
+.mrd-card-label{font-size:9px;color:#4a9ab8;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px}
+.mrd-card-val{font-size:11px;color:#e0f2ff;line-height:1.6}
+.cert-list{display:flex;flex-direction:column;gap:4px}
+.cert-item{display:flex;align-items:center;gap:8px;padding:5px 8px;background:#06080f;border:1px solid #091828;border-radius:3px;font-size:10px}
+.cert-item.risk{border-color:#7f1d1d40;background:#0a0608}
+.cert-region{font-size:9px;color:#3a7a9a;min-width:80px}
+.cert-name{flex:1;color:#8ab4cc}
+.cert-risk{font-size:8px;padding:1px 6px;border-radius:2px}
+.cert-risk.high{background:#1a0808;color:#f87171;border:1px solid #7f1d1d40}
+.cert-risk.med{background:#12100a;color:#fbbf24;border:1px solid #d9770640}
+.cert-risk.low{background:#0a1a12;color:#34d399;border:1px solid #05966940}
+.risk-list{display:flex;flex-direction:column;gap:5px}
+.risk-item{padding:7px 10px;border-radius:3px;font-size:10px;border-left:2px solid}
+.risk-item.high{background:#0a0608;border-color:#ef4444;color:#fca5a5}
+.risk-item.med{background:#0a0800;border-color:#f59e0b;color:#fcd34d}
+.risk-item.low{background:#060a08;border-color:#10b981;color:#6ee7b7}
+.mrd-error{padding:16px;background:#0a0608;border:1px solid #7f1d1d40;border-radius:4px;color:#f87171;font-size:10px;line-height:1.6}
+.mrd-rerun{margin-top:12px}
+
+/* ── Parse log ── */
+#parseLog{display:none;margin-top:8px;background:#06101a;border:1px solid #0d2d4a;border-radius:4px;padding:10px;font-size:10px;color:#3a7a9a;max-height:120px;overflow-y:auto}
+.log-ok{color:#34d399}.log-warn{color:#fbbf24}.log-err{color:#f87171}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Upload Screen -->
+<div id="uploadScreen">
+  <div>
+    <div class="upload-title">Project Schedule Viewer</div>
+    <div class="upload-sub" style="margin-top:4px">QD-OLED · GANTT · CRITICAL PATH · TRON MODE</div>
+  </div>
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <div class="drop-icon">⬡</div>
+    <div class="drop-text">拖拉 .xlsx 到這裡，或點擊選擇檔案</div>
+    <div class="drop-sub" style="margin-top:6px">支援欄位：ID · Task Name · Duration · Start · Finish · Predecessors</div>
+    <div class="drop-sub" style="margin-top:4px">縮排規則：0空格=群組 · 2空格=第一層 · 4空格=第二層</div>
+  </div>
+  <div id="warningBox">
+    <div class="warn-title">⚠ 解析警告</div>
+    <div id="warnItems"></div>
+  </div>
+  <div id="parseLog"></div>
+</div>
+
+<!-- Tooltip -->
+<div class="tt" id="tt">
+  <div class="tt-t" id="ttn"></div>
+  <div class="tt-r" id="ttd"></div>
+  <div class="tt-r" id="ttdu"></div>
+  <div class="tt-r" id="ttp"></div>
+  <div class="tt-cp" id="ttcp"></div>
+</div>
+
+<!-- Main App -->
+<div id="mainApp">
+  <div class="header">
+    <div>
+      <div class="title" id="appTitle">Schedule Viewer</div>
+      <div class="subtitle" id="appSub"></div>
+    </div>
+    <div class="controls">
+      <div class="tbadge" id="todayBadge"></div>
+      <button class="btn sp-on" id="btnSP" onclick="toggleSP()">◉ STATUS</button>
+      <button class="btn cp-on" id="btnCP" onclick="toggleCP()">⚡ CRIT</button>
+      <button class="btn active" id="btnM" onclick="setZoom('month')">MON</button>
+      <button class="btn" id="btnW" onclick="setZoom('week')">WK</button>
+      <button class="btn" onclick="toggleAll()">≡</button>
+      <button class="btn" id="btnUploadMrd" onclick="openMrdModal()" style="display:none;color:#a78bfa;border-color:#4c1d95">+ MRD</button>
+      <button class="btn danger" onclick="resetApp()">↺ 重新上傳</button>
+    </div>
+  </div>
+
+  <!-- Status Cards -->
+  <div class="status-panel" id="statusPanel">
+    <div class="sc blue"><div class="sc-label">專案進度</div><div class="sc-val amber" id="sc-pct">—</div><div class="sc-sub" id="sc-day"></div></div>
+    <div class="sc green"><div class="sc-label">當前階段</div><div class="sc-val green" style="font-size:13px" id="sc-phase">—</div><div class="sc-sub" id="sc-phase-sub"></div></div>
+    <div class="sc amber"><div class="sc-label">下一里程碑</div><div class="sc-val" style="font-size:12px;color:#fbbf24" id="sc-next">—</div><div class="sc-sub" id="sc-next-date"></div></div>
+    <div class="sc red"><div class="sc-label">已過里程碑</div><div class="sc-val" id="sc-late">—</div><div class="sc-sub">milestones passed</div></div>
+    <div class="sc purple"><div class="sc-label">MP 倒數</div><div class="sc-val" style="font-size:14px;color:#c4b5fd" id="sc-mp">—</div><div class="sc-sub" id="sc-mp-date"></div></div>
+  </div>
+  <div class="prog-wrap" id="progWrap">
+    <div class="prog-label">整體時程進度</div>
+    <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+  </div>
+  <div class="ms-list" id="msList">
+    <div class="ms-title">關鍵里程碑</div>
+    <div id="msRows"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" id="tabGantt" onclick="switchTab('gantt')">⬡ GANTT</div>
+    <div class="tab" id="tabSch" onclick="switchTab('sch')">≡ RAW SCH</div>
+    <div class="tab" id="tabMrd" onclick="switchTab('mrd')" style="display:none">◈ MRD ANALYSIS</div>
+  </div>
+
+  <!-- Tab: Gantt -->
+  <div class="tab-panel active" id="panelGantt">
+    <div class="gantt-wrap" id="gw">
+      <div class="gantt-inner" id="gi">
+        <canvas id="cvs"></canvas>
+        <div class="gantt-container" id="gc"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="li" style="color:#fbbf24"><div class="ld" style="background:#f59e0b;box-shadow:0 0 4px #f59e0b"></div>CRITICAL PATH</div>
+      <div class="li"><div class="ld" style="background:#0ea5e9;opacity:0.5"></div>主流程</div>
+      <div class="li"><div class="ld" style="background:#10b981;opacity:0.5"></div>面板</div>
+      <div class="li"><div class="ld" style="background:#ef4444;opacity:0.5"></div>認證</div>
+      <div class="li"><div class="ld" style="background:#a78bfa;opacity:0.5"></div>Logo</div>
+      <div class="li"><div class="ld" style="background:#f59e0b;opacity:0.5"></div>SoVP</div>
+      <div class="li" style="color:#ef4444"><div class="ld" style="width:1px;height:12px;background:#ef4444;box-shadow:0 0 4px #ef4444"></div>TODAY</div>
+    </div>
+  </div>
+
+  <!-- Tab: MRD Analysis -->
+  <div class="tab-panel" id="panelMrd">
+    <div class="mrd-wrap" id="mrdContent">
+      <div style="padding:32px;text-align:center;color:#1e5a7a;font-size:11px;letter-spacing:0.08em">尚未上傳 MRD — 點擊右上角「+ MRD」上傳</div>
+    </div>
+  </div>
+
+  <!-- Tab: Raw SCH -->
+  <div class="tab-panel" id="panelSch">
+    <div class="sch-filter">
+      <input class="sch-search" id="schSearch" placeholder="搜尋任務名稱 / ID..." oninput="filterSch()">
+      <label style="font-size:10px;color:#3a7a9a;display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" id="schCpOnly" onchange="filterSch()" style="accent-color:#f59e0b"> 只顯示關鍵路徑
+      </label>
+      <label style="font-size:10px;color:#3a7a9a;display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" id="schMsOnly" onchange="filterSch()" style="accent-color:#fbbf24"> 只顯示里程碑
+      </label>
+      <div class="sch-stats" id="schStats"></div>
+    </div>
+    <div class="sch-wrap">
+      <table class="sch-table" id="schTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Task Name</th>
+            <th>Duration</th>
+            <th>Start</th>
+            <th>Finish</th>
+            <th>Predecessors</th>
+            <th>Level</th>
+            <th>Flags</th>
+          </tr>
+        </thead>
+        <tbody id="schBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- API Key Modal -->
+<div class="modal-overlay hidden" id="apiModal">
+  <div class="modal">
+    <div class="modal-title">Claude API Key</div>
+    <div class="modal-sub">MRD AI 分析需要 Anthropic API Key。<br>Key 僅儲存在你的瀏覽器本地，不會上傳至任何伺服器。</div>
+    <div class="api-label">API Key</div>
+    <input class="api-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-...">
+    <div class="api-hint">前往 console.anthropic.com 取得 API Key<br>格式：sk-ant-api03-xxxx</div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeApiModal()">取消</button>
+      <button class="btn active" onclick="saveApiKey()">儲存並繼續</button>
+    </div>
+  </div>
+</div>
+
+<!-- MRD Upload Modal -->
+<div class="modal-overlay hidden" id="mrdModal">
+  <div class="modal">
+    <div class="modal-title">上傳 MRD 規格書</div>
+    <div class="modal-sub">上傳 MRD .xlsx 檔案，AI 將自動萃取認證需求、面板規格、風險項目，並整合至專案視圖。</div>
+    <div class="modal-drop" id="mrdDrop">
+      <input type="file" id="mrdFileInput" accept=".xlsx,.xls">
+      <div class="modal-drop-text">拖拉 MRD .xlsx 到這裡，或點擊選擇</div>
+      <div class="modal-drop-sub">Marketing Requirements Document</div>
+    </div>
+    <div id="mrdDropStatus" style="font-size:10px;color:#34d399;min-height:16px"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="skipMrd()">略過，只用 SCH</button>
+      <button class="btn active" id="btnMrdAnalyze" onclick="analyzeMrd()" disabled>AI 分析 MRD</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const TODAY = new Date();
+TODAY.setHours(0,0,0,0);
+
+let STATE = {
+  tasks: [],
+  lanes: [],
+  milestones: [],
+  cpIds: new Set(),
+  projectStart: null,
+  projectEnd: null,
+  warnings: [],
+  logs: [],
+  collapsed: {},
+  showCP: true,
+  showSP: true,
+  zoom: 'month',
+  barPositions: {},
+  animFrame: null,
+  animT: 0
+};
+
+// ─────────────────────────────────────────────
+// UPLOAD HANDLING
+// ─────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) processFile(e.target.files[0]); });
+
+function processFile(file) {
+  if (!file.name.match(/\.(xlsx|xls)$/i)) {
+    showWarning(['檔案格式錯誤：請上傳 .xlsx 或 .xls 檔案']);
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      parseWorkbook(wb, file.name);
+    } catch(err) {
+      showWarning(['無法讀取檔案：' + err.message]);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─────────────────────────────────────────────
+// PARSER
+// ─────────────────────────────────────────────
+function parseWorkbook(wb, filename) {
+  STATE.warnings = [];
+  STATE.logs = [];
+
+  // find schedule sheet
+  let sheetName = wb.SheetNames.find(n => /schedule/i.test(n)) || wb.SheetNames[0];
+  log('ok', `讀取工作表：${sheetName}`);
+  const ws = wb.Sheets[sheetName];
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+
+  // find header row (has ID + Task Name)
+  let headerRow = -1;
+  for (let i = 0; i < Math.min(10, raw.length); i++) {
+    const r = raw[i];
+    if (!r) continue;
+    const hasId = r.some(c => c && String(c).trim().toUpperCase() === 'ID');
+    const hasTask = r.some(c => c && /task.?name/i.test(String(c)));
+    if (hasId && hasTask) { headerRow = i; break; }
   }
 
-  const { prompt, apiKey } = req.body;
-
-  if (!prompt || !apiKey) {
-    return res.status(400).json({ error: 'Missing prompt or apiKey' });
+  if (headerRow === -1) {
+    warn('找不到標題列（需要 ID、Task Name 欄位）');
+    showWarnings(); return;
   }
+  log('ok', `標題列位於第 ${headerRow+1} 行`);
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
+  // map column indices
+  const headers = raw[headerRow].map(h => h ? String(h).trim().toLowerCase() : '');
+  const col = {
+    id: headers.findIndex(h => h === 'id'),
+    task: headers.findIndex(h => /task.?name/.test(h)),
+    dur: headers.findIndex(h => h === 'duration'),
+    start: headers.findIndex(h => h === 'start'),
+    finish: headers.findIndex(h => h === 'finish'),
+    pred: headers.findIndex(h => /predecessor/.test(h))
+  };
 
-    const data = await response.json();
+  if (col.id === -1) { warn('找不到 ID 欄位'); showWarnings(); return; }
+  if (col.task === -1) { warn('找不到 Task Name 欄位'); showWarnings(); return; }
+  if (col.start === -1) { warn('找不到 Start 欄位'); showWarnings(); return; }
+  if (col.finish === -1) { warn('找不到 Finish 欄位'); showWarnings(); return; }
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || 'API error' });
+  log('ok', `欄位對應：ID=${col.id} Task=${col.task} Start=${col.start} Finish=${col.finish} Pred=${col.pred}`);
+
+  // parse rows
+  const tasks = [];
+  const idSet = new Set();
+  let dateErrCount = 0;
+
+  for (let i = headerRow + 1; i < raw.length; i++) {
+    const r = raw[i];
+    if (!r || r.every(c => c === null || c === '')) continue;
+
+    const rawId = r[col.id];
+    const rawTask = r[col.task];
+    if (!rawId && !rawTask) continue;
+
+    const id = rawId !== null && rawId !== '' ? String(rawId).trim() : null;
+    const taskName = rawTask ? String(rawTask) : '';
+    if (!taskName.trim()) continue;
+
+    // detect level from leading spaces
+    const spaces = taskName.match(/^(\s*)/)[1].length;
+    let level = 0;
+    if (spaces === 0) level = 0;
+    else if (spaces <= 2) level = 1;
+    else if (spaces <= 4) level = 2;
+    else {
+      level = Math.floor(spaces / 2);
+      if (spaces % 2 !== 0) warn(`第 ${i+1} 行「${taskName.trim()}」縮排為奇數空格(${spaces})，已自動修正為 level ${level}`);
     }
 
-    return res.status(200).json(data);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    // check duplicate ID
+    if (id && idSet.has(id)) {
+      warn(`ID ${id} 重複（第 ${i+1} 行），已忽略`);
+      continue;
+    }
+    if (id) idSet.add(id);
+
+    // parse dates
+    const startDate = parseDate(r[col.start], i+1, 'Start');
+    const finishDate = parseDate(r[col.finish], i+1, 'Finish');
+    if (!startDate) { dateErrCount++; if (dateErrCount <= 3) warn(`第 ${i+1} 行日期無法解析：「${r[col.start]}」`); continue; }
+
+    // parse duration
+    const durRaw = r[col.dur] ? String(r[col.dur]).trim() : '';
+    const durDays = parseDuration(durRaw);
+
+    // predecessors
+    const predRaw = r[col.pred] ? String(r[col.pred]).trim() : '';
+
+    tasks.push({
+      id: id || `row${i}`,
+      n: taskName.trim(),
+      s: fmtDate(startDate),
+      f: fmtDate(finishDate || startDate),
+      startDate,
+      finishDate: finishDate || startDate,
+      dur: durRaw,
+      durDays,
+      pr: predRaw,
+      lv: level,
+      ms: durDays === 0
+    });
+  }
+
+  if (dateErrCount > 3) warn(`另有 ${dateErrCount - 3} 行日期解析失敗，已跳過`);
+  log('ok', `成功解析 ${tasks.length} 個任務`);
+
+  if (tasks.length === 0) {
+    warn('沒有解析到任何有效任務，請確認欄位格式');
+    showWarnings(); return;
+  }
+
+  // build lanes by grouping top-level sections
+  const lanes = buildLanes(tasks);
+  log('ok', `識別出 ${lanes.length} 個泳道`);
+
+  // find milestones (level 0 or 1 with ms flag, or key patterns)
+  const milestones = tasks.filter(t => t.ms || isDurationZero(t.dur)).slice(0, 20);
+
+  // project range
+  const allDates = tasks.flatMap(t => [t.startDate, t.finishDate]).filter(Boolean);
+  const minDate = new Date(Math.min(...allDates));
+  const maxDate = new Date(Math.max(...allDates));
+  minDate.setDate(1); // round to month start
+  maxDate.setMonth(maxDate.getMonth() + 2); maxDate.setDate(1);
+
+  enrichPredecessors(tasks);
+  STATE.tasks = tasks;
+  STATE.lanes = lanes;
+  STATE.milestones = milestones;
+  STATE.projectStart = minDate;
+  STATE.projectEnd = maxDate;
+  STATE.cpIds = detectCriticalPath(tasks);
+  STATE.collapsed = {};
+  STATE.barPositions = {};
+
+  // show warnings if any
+  if (STATE.warnings.length > 0) showWarnings();
+
+  // show main app
+  showMainApp(filename, tasks);
+  buildStatusPanel();
+  render();
+  promptMrdUpload();
+}
+
+function parseDate(val, rowNum, colName) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val) ? null : val;
+  const s = String(val).trim();
+  // formats: 2026/5/12, 2026/5/12 Tue, 2026-05-12, May 12 2026
+  let m;
+  m = s.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+  m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) return new Date(+m[3], +m[1]-1, +m[2]);
+  // Excel serial number
+  if (/^\d{5}$/.test(s)) {
+    const d = XLSX.SSF.parse_date_code(+s);
+    if (d) return new Date(d.y, d.m-1, d.d);
+  }
+  return null;
+}
+
+function parseDuration(s) {
+  if (!s) return 1;
+  const lower = s.toLowerCase().trim();
+  // edays: treat same as days
+  let m = lower.match(/^(\d+(?:\.\d+)?)\s*edays?$/);
+  if (m) return Math.round(parseFloat(m[1]));
+  m = lower.match(/^(\d+(?:\.\d+)?)\s*days?$/);
+  if (m) return Math.round(parseFloat(m[1]));
+  m = lower.match(/^(\d+(?:\.\d+)?)\s*wks?$/);
+  if (m) return Math.round(parseFloat(m[1]) * 5);
+  m = lower.match(/^(\d+(?:\.\d+)?)\s*weeks?$/);
+  if (m) return Math.round(parseFloat(m[1]) * 5);
+  m = lower.match(/^0\s*days?$/);
+  if (m) return 0;
+  return 1;
+}
+
+function isDurationZero(s) {
+  return s && /^0\s*days?/i.test(String(s).trim());
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function buildLanes(tasks) {
+  // group by top-level tasks (level 0)
+  const LANE_COLORS = ['#0ea5e9','#10b981','#ef4444','#a78bfa','#f59e0b','#ec4899','#14b8a6','#f97316'];
+  const LANE_NAMES = {
+    'panel': {label:'面板時程',badge:'PANEL',c:'#10b981'},
+    'agency': {label:'Agency Approval',badge:'CERT',c:'#ef4444'},
+    'cert': {label:'Agency Approval',badge:'CERT',c:'#ef4444'},
+    'logo': {label:'Logo 認證',badge:'LOGO',c:'#a78bfa'},
+    'sovp': {label:'SoVP & MP',badge:'SOVP',c:'#f59e0b'},
+    'freesync': {label:'Logo 認證',badge:'LOGO',c:'#a78bfa'},
+    'gsync': {label:'Logo 認證',badge:'LOGO',c:'#a78bfa'},
+    'vesa': {label:'Logo 認證',badge:'LOGO',c:'#a78bfa'},
+    'hdmi': {label:'HDMI Certs',badge:'HDMI',c:'#a78bfa'},
+  };
+
+  const lanes = [];
+  let currentLane = null;
+  let laneIdx = 0;
+
+  tasks.forEach(t => {
+    if (t.lv === 0) {
+      // detect lane type from name
+      const lower = t.n.toLowerCase();
+      let meta = null;
+      for (const [key, val] of Object.entries(LANE_NAMES)) {
+        if (lower.includes(key)) { meta = val; break; }
+      }
+      if (!meta) meta = { label: t.n, badge: t.n.slice(0,4).toUpperCase(), c: LANE_COLORS[laneIdx % LANE_COLORS.length] };
+      laneIdx++;
+      currentLane = { id: 'lane_'+laneIdx, label: meta.label || t.n, badge: meta.badge, c: meta.c, tasks: [t] };
+      lanes.push(currentLane);
+    } else {
+      if (!currentLane) {
+        currentLane = { id: 'lane_0', label: '主流程', badge: 'MAIN', c: LANE_COLORS[0], tasks: [] };
+        lanes.push(currentLane);
+      }
+      currentLane.tasks.push(t);
+    }
+  });
+
+  return lanes;
+}
+
+function detectCriticalPath(tasks) {
+  // heuristic: find the longest chain from first milestone to last
+  // use task with longest duration chain via predecessors
+  const idMap = {};
+  tasks.forEach(t => idMap[t.id] = t);
+
+  // find tasks with no successors (potential end nodes)
+  const successorSet = new Set();
+  tasks.forEach(t => {
+    if (t.pr) {
+      t.pr.split(',').forEach(p => {
+        const pid = p.trim().match(/^(\d+)/);
+        if (pid) successorSet.add(pid[1]);
+      });
+    }
+  });
+
+  // simple: mark milestones (ms=true or dur=0) as CP candidates
+  // then trace backwards from last milestone
+  const msTasks = tasks.filter(t => t.ms).sort((a,b) => a.finishDate - b.finishDate);
+  const cpSet = new Set();
+  msTasks.forEach(t => cpSet.add(t.id));
+
+  // also add long-duration tasks as CP
+  const sorted = [...tasks].sort((a,b) => b.durDays - a.durDays);
+  sorted.slice(0, Math.ceil(tasks.length * 0.3)).forEach(t => cpSet.add(t.id));
+
+  return cpSet;
+}
+
+function log(type, msg) { STATE.logs.push({ type, msg }); }
+function warn(msg) { STATE.warnings.push(msg); log('warn', msg); }
+
+function showWarning(msgs) {
+  const box = document.getElementById('warningBox');
+  document.getElementById('warnItems').innerHTML = msgs.map(m => `<div class="warn-item">• ${m}</div>`).join('');
+  box.style.display = 'block';
+}
+function showWarnings() {
+  if (STATE.warnings.length === 0) return;
+  showWarning(STATE.warnings);
+  const logEl = document.getElementById('parseLog');
+  logEl.style.display = 'block';
+  logEl.innerHTML = STATE.logs.map(l => `<div class="log-${l.type}">[ ${l.type.toUpperCase()} ] ${l.msg}</div>`).join('');
+}
+
+function showMainApp(filename, tasks) {
+  document.getElementById('uploadScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  const name = filename.replace(/\.(xlsx|xls)$/i, '');
+  document.getElementById('appTitle').textContent = name;
+  document.getElementById('appSub').textContent = `${tasks.length} tasks · ${STATE.lanes.length} lanes · ${fmtDate(STATE.projectStart)} — ${fmtDate(STATE.projectEnd)}`;
+  const td = fmtDateShort(TODAY);
+  document.getElementById('todayBadge').textContent = `▶ ${td}`;
+}
+
+function fmtDateShort(d) {
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ─────────────────────────────────────────────
+// STATUS PANEL
+// ─────────────────────────────────────────────
+function buildStatusPanel() {
+  const ps = STATE.projectStart, pe = STATE.projectEnd;
+  const totalDays = Math.max(1, Math.round((pe - ps) / 86400000));
+  const elapsed = Math.round((TODAY - ps) / 86400000);
+  const pct = Math.max(0, Math.min(100, Math.round(elapsed / totalDays * 100)));
+
+  document.getElementById('sc-pct').textContent = pct + '%';
+  document.getElementById('sc-day').textContent = `第${elapsed}天 / 共${totalDays}天`;
+  document.getElementById('progFill').style.width = pct + '%';
+
+  // current phase = lane containing today
+  let phase = '—', phaseSub = '';
+  STATE.lanes.forEach(lane => {
+    const laneDates = lane.tasks.map(t => [t.startDate, t.finishDate]).flat().filter(Boolean);
+    if (!laneDates.length) return;
+    const ls = new Date(Math.min(...laneDates));
+    const lf = new Date(Math.max(...laneDates));
+    if (TODAY >= ls && TODAY <= lf) { phase = lane.label; phaseSub = '進行中'; }
+  });
+  document.getElementById('sc-phase').textContent = phase;
+  document.getElementById('sc-phase-sub').textContent = phaseSub;
+
+  // next milestone
+  const futureMilestones = STATE.tasks.filter(t => t.ms && t.startDate > TODAY).sort((a,b) => a.startDate - b.startDate);
+  if (futureMilestones.length > 0) {
+    const next = futureMilestones[0];
+    const diff = Math.round((next.startDate - TODAY) / 86400000);
+    document.getElementById('sc-next').textContent = next.n.slice(0, 22);
+    document.getElementById('sc-next-date').textContent = `${next.s} · ${diff}天後`;
+  }
+
+  // passed milestones
+  const passed = STATE.tasks.filter(t => t.ms && t.finishDate < TODAY).length;
+  document.getElementById('sc-late').textContent = passed;
+  document.getElementById('sc-late').className = 'sc-val ' + (passed > 0 ? 'amber' : 'green');
+
+  // mp countdown - find last milestone
+  const lastMs = STATE.tasks.filter(t => t.ms).sort((a,b) => b.finishDate - a.finishDate)[0];
+  if (lastMs) {
+    const mpDays = Math.round((lastMs.finishDate - TODAY) / 86400000);
+    document.getElementById('sc-mp').textContent = mpDays > 0 ? mpDays + '天' : '已完成';
+    document.getElementById('sc-mp-date').textContent = `目標 ${lastMs.s}`;
+  }
+
+  // milestone rows
+  const msToShow = STATE.tasks.filter(t => t.ms).sort((a,b) => a.startDate - b.startDate).slice(0, 12);
+  let mhtml = '';
+  msToShow.forEach(ms => {
+    const diff = Math.round((ms.startDate - TODAY) / 86400000);
+    const isPast = ms.startDate < TODAY;
+    const isSoon = diff >= 0 && diff <= 30;
+    const dc = isPast ? 'overdue' : isSoon ? 'soon' : 'future';
+    const dt = isPast ? `${Math.abs(diff)}d ago` : `${diff}d`;
+    const isCp = STATE.cpIds.has(ms.id);
+    mhtml += `<div class="ms-row">
+      <div class="ms-dot" style="background:${isCp?'#f59e0b':'#0ea5e9'};${isCp?'box-shadow:0 0 5px #f59e0b':''}"></div>
+      <div class="ms-name ${isCp?'cp':''}">${ms.n.slice(0,30)}</div>
+      <div class="ms-date">${ms.s}</div>
+      <div class="ms-delta ${dc}">${dt}</div>
+    </div>`;
+  });
+  document.getElementById('msRows').innerHTML = mhtml;
+}
+
+// ─────────────────────────────────────────────
+// GANTT RENDER
+// ─────────────────────────────────────────────
+function pct(d) {
+  return Math.max(0, Math.min(100, (d - STATE.projectStart) / (STATE.projectEnd - STATE.projectStart) * 100));
+}
+
+function getMarkers() {
+  const ms = []; let d = new Date(STATE.projectStart);
+  while (d <= STATE.projectEnd) {
+    ms.push(new Date(d));
+    STATE.zoom === 'month' ? d.setMonth(d.getMonth()+1) : d.setDate(d.getDate()+7);
+  }
+  return ms;
+}
+
+function fmtM(d) {
+  const mn = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return STATE.zoom === 'month' ? mn[d.getMonth()] + (d.getMonth()===0?`'${String(d.getFullYear()).slice(2)}`:'') : `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function render() {
+  if (STATE.animFrame) { cancelAnimationFrame(STATE.animFrame); STATE.animFrame = null; }
+  STATE.barPositions = {};
+  const gc = document.getElementById('gc');
+  const ms = getMarkers();
+  const todayP = pct(TODAY);
+  let h = ''; let rowY = 28;
+
+  h += `<div class="tl-hdr"><div class="tl-sp">TASK</div><div class="tl-area">`;
+  ms.forEach(m => { const p = pct(m); h += `<div class="mline" style="left:${p}%"></div><div class="mlabel" style="left:${p}%">${fmtM(m)}</div>`; });
+  h += `<div style="position:absolute;left:${todayP}%;top:0;bottom:0;width:1px;background:#ef4444;box-shadow:0 0 5px #ef444480;z-index:5"></div>`;
+  h += `</div></div>`;
+
+  STATE.lanes.forEach(lane => {
+    const col = STATE.collapsed[lane.id];
+    h += `<div class="lane">`;
+    h += `<div class="lane-hdr" onclick="toggleLane('${lane.id}')">`;
+    h += `<span style="font-size:12px;color:#1e5a7a;margin-right:2px">${col?'▶':'▼'}</span>`;
+    h += `<span class="lbadge" style="background:#06101a;color:${lane.c};border:1px solid ${lane.c}40">${lane.badge}</span>`;
+    h += `<span style="font-size:11px;font-weight:500;color:#7dd3fc;letter-spacing:0.05em">${lane.label}</span>`;
+    h += `</div>`; rowY += 27;
+
+    if (!col) {
+      lane.tasks.forEach(t => {
+        if (!t.startDate) return;
+        const sp = pct(t.startDate), fp = pct(t.finishDate);
+        const w = Math.max(fp - sp, 0.3);
+        const isMs = t.ms || (w < 0.4);
+        const isCp = STATE.cpIds.has(t.id);
+        const cpC = STATE.showCP ? (isCp ? 'cp' : 'dim') : '';
+        const lc = t.lv === 0 ? 'rl p' : 'rl';
+        const tid = CSS.escape ? CSS.escape(String(t.id)) : String(t.id).replace(/[^a-zA-Z0-9_-]/g,'_');
+
+        if (isCp) STATE.barPositions[t.id] = { xSPct: sp, xEPct: isMs ? sp : fp, yRow: rowY, isMs: !!isMs };
+
+        h += `<div class="row"><div class="${lc}" style="padding-left:${8+t.lv*14}px;${isCp&&STATE.showCP?`color:${lane.c};text-shadow:0 0 5px ${lane.c}50`:''}" title="${t.n}">${t.n}</div>`;
+        h += `<div class="ca" id="ca_${tid}">`;
+        ms.forEach(m => { const p = pct(m); h += `<div style="position:absolute;left:${p}%;top:0;bottom:0;width:1px;background:#0e1e30;pointer-events:none"></div>`; });
+        h += `<div class="todayln" style="left:${todayP}%"></div>`;
+
+        const eid = `el_${tid}`;
+        const tsafe = t.id.toString().replace(/'/g,"\\'");
+        if (isMs) {
+          h += `<div class="dia ${cpC}" id="${eid}" style="left:${sp}%;background:${lane.c};${isCp&&STATE.showCP?`box-shadow:0 0 10px ${lane.c},0 0 3px ${lane.c}`:''}" onmouseenter="showTT('${tsafe}')" onmouseleave="hideTT()"></div>`;
+        } else {
+          h += `<div class="bar ${cpC}" id="${eid}" style="left:${sp}%;width:${w}%;background:${lane.c};${isCp&&STATE.showCP?`box-shadow:0 0 8px ${lane.c}60`:''}" onmouseenter="showTT('${tsafe}')" onmouseleave="hideTT()"></div>`;
+          if (w > 3) { const lbl = t.n.length > 20 ? t.n.slice(0,20)+'…' : t.n; h += `<div class="blbl" style="left:${sp+0.2}%;color:rgba(255,255,255,0.88)">${lbl}</div>`; }
+        }
+        h += `</div></div>`; rowY += 26;
+      });
+    }
+    h += `</div>`;
+  });
+
+  gc.innerHTML = h;
+
+  requestAnimationFrame(() => {
+    const gcEl = document.getElementById('gc');
+    const chartW = gcEl.scrollWidth - 200;
+    Object.keys(STATE.barPositions).forEach(id => {
+      const bp = STATE.barPositions[id];
+      STATE.barPositions[id] = { ...bp, x: 200 + bp.xEPct/100*chartW, xStart: 200 + bp.xSPct/100*chartW, y: bp.yRow + 13 };
+    });
+    drawConnections();
+  });
+}
+
+// ─────────────────────────────────────────────
+// TRON CONNECTIONS
+// ─────────────────────────────────────────────
+function drawConnections() {
+  if (STATE.animFrame) { cancelAnimationFrame(STATE.animFrame); STATE.animFrame = null; }
+  const canvas = document.getElementById('cvs');
+  const gc = document.getElementById('gc');
+  canvas.width = gc.scrollWidth; canvas.height = gc.scrollHeight;
+  canvas.style.width = gc.scrollWidth + 'px'; canvas.style.height = gc.scrollHeight + 'px';
+  if (!STATE.showCP) { canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height); return; }
+
+  // sort CP nodes by x position (chronological)
+  const pts = Object.values(STATE.barPositions).sort((a,b) => a.x - b.x);
+  if (pts.length < 2) return;
+
+  const segs = []; const segLens = []; let totalLen = 0;
+  for (let i = 0; i < pts.length-1; i++) {
+    const a = pts[i], b = pts[i+1];
+    const l = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    segs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y });
+    segLens.push(l); totalLen += l;
+  }
+
+  STATE.animT = 0;
+  function draw() {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    STATE.animT = (STATE.animT + 4.5) % (totalLen + 80);
+    const progress = Math.min(STATE.animT, totalLen);
+
+    // static dim path
+    ctx.save(); ctx.globalAlpha = 0.15; ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5; ctx.setLineDash([4,5]);
+    segs.forEach(s => { ctx.beginPath(); ctx.moveTo(s.ax,s.ay); ctx.lineTo(s.bx,s.ay); ctx.lineTo(s.bx,s.by); ctx.stroke(); });
+    ctx.restore();
+
+    // animated bright
+    let drawn = 0; ctx.save(); ctx.setLineDash([]);
+    segs.forEach((s,si) => {
+      const sl = segLens[si];
+      if (drawn >= progress) return;
+      const dt = Math.min(sl, progress - drawn);
+      const hL = Math.abs(s.bx - s.ax);
+      const dH = s.bx >= s.ax ? 1 : -1, dV = s.by >= s.ay ? 1 : -1;
+      let ex, ey;
+      if (dt <= hL) { ex = s.ax + dH*dt; ey = s.ay; }
+      else { ex = s.bx; ey = s.ay + dV*(dt - hL); }
+      const draw3 = (w,col,alpha) => {
+        ctx.beginPath(); ctx.strokeStyle=col; ctx.lineWidth=w; ctx.globalAlpha=alpha;
+        ctx.moveTo(s.ax,s.ay);
+        if(dt<=hL) ctx.lineTo(ex,ey);
+        else { ctx.lineTo(s.bx,s.ay); ctx.lineTo(ex,ey); }
+        ctx.stroke();
+      };
+      draw3(10,'rgba(245,158,11,1)',0.08);
+      draw3(3,'rgba(245,158,11,1)',0.5);
+      draw3(1,'rgba(251,191,36,1)',0.95);
+      ctx.globalAlpha = 1;
+      if (dt < sl) {
+        ctx.beginPath(); ctx.arc(ex,ey,4,0,Math.PI*2); ctx.fillStyle='#fbbf24'; ctx.fill();
+        ctx.beginPath(); ctx.arc(ex,ey,9,0,Math.PI*2); ctx.fillStyle='rgba(251,191,36,0.12)'; ctx.fill();
+      }
+      if (dt > hL && hL > 2) {
+        ctx.beginPath(); ctx.arc(s.bx,s.ay,2.5,0,Math.PI*2); ctx.fillStyle='rgba(251,191,36,0.7)'; ctx.fill();
+      }
+      drawn += dt;
+    });
+    ctx.restore();
+    STATE.animFrame = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+
+// ─────────────────────────────────────────────
+// TAB SWITCHING
+// ─────────────────────────────────────────────
+function switchTab(name) {
+  ['gantt','sch','mrd'].forEach(t => {
+    const tabEl = document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)); if(tabEl) tabEl.className = 'tab' + (t===name?' active':'');
+    const panEl = document.getElementById('panel'+t.charAt(0).toUpperCase()+t.slice(1)); if(panEl) panEl.className = 'tab-panel' + (t===name?' active':'');
+  });
+  if (name === 'sch') renderSchTable();
+  if (name === 'gantt') {
+    // re-trigger canvas after tab becomes visible
+    setTimeout(() => drawConnections(), 50);
   }
 }
+
+// ─────────────────────────────────────────────
+// RAW SCH TABLE
+// ─────────────────────────────────────────────
+function renderSchTable() {
+  const tasks = STATE.tasks;
+  if (!tasks.length) return;
+  buildSchRows(tasks);
+  document.getElementById('schStats').textContent = `${tasks.length} tasks · ${tasks.filter(t=>t.ms).length} milestones · ${STATE.cpIds.size} CP nodes`;
+}
+
+function buildSchRows(tasks) {
+  const cpOnly = document.getElementById('schCpOnly')?.checked;
+  const msOnly = document.getElementById('schMsOnly')?.checked;
+  const query = (document.getElementById('schSearch')?.value || '').toLowerCase().trim();
+
+  let filtered = tasks.filter(t => {
+    if (cpOnly && !STATE.cpIds.has(t.id)) return false;
+    if (msOnly && !t.ms) return false;
+    if (query && !t.n.toLowerCase().includes(query) && !String(t.id).includes(query)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('schBody');
+  tbody.innerHTML = filtered.map(t => {
+    const isCp = STATE.cpIds.has(t.id);
+    const lvClass = t.lv === 0 ? '' : t.lv === 1 ? ' lv1' : ' lv2';
+    const rowClass = (t.ms ? 'is-ms ' : '') + (isCp ? 'is-cp' : '');
+    const flags = [t.ms ? '<span class="sch-badge badge-ms">◆ MS</span>' : '', isCp ? '<span class="sch-badge badge-cp">⚡ CP</span>' : ''].filter(Boolean).join('');
+
+    // Predecessor parsing: highlight types
+    const predHtml = t.pr ? parsePredHtml(t.pr) : '<span style="color:#1e3a5a">—</span>';
+
+    return `<tr class="${rowClass}">
+      <td class="id-c">${escH(t.id)}</td>
+      <td class="task${lvClass}" title="${escH(t.n)}">${escH(t.n)}</td>
+      <td class="dur">${escH(t.dur||'—')}</td>
+      <td class="date">${t.s}</td>
+      <td class="date">${t.f !== t.s ? t.f : '—'}</td>
+      <td class="pred">${predHtml}</td>
+      <td style="color:#1e5a7a;text-align:center">${t.lv}</td>
+      <td>${flags}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('schStats').textContent =
+    `顯示 ${filtered.length} / ${tasks.length} tasks · ${tasks.filter(t=>t.ms).length} milestones`;
+}
+
+function parsePredHtml(pr) {
+  // parse tokens like: 51FS+3 days, 41SS-2 days, 52FF, 12,42,41
+  return pr.split(',').map(token => {
+    token = token.trim();
+    const m = token.match(/^(\d+)(FS|SS|FF|SF)?(([+-]\d+)\s*(edays?|days?|wks?))?$/i);
+    if (!m) return `<span style="color:#a78bfa">${escH(token)}</span>`;
+    const id = m[1];
+    const type = m[2] || 'FS';
+    const offset = m[3] ? m[3] : '';
+    const typeColor = type==='FS'?'#a78bfa':type==='SS'?'#38bdf8':type==='FF'?'#f59e0b':'#f87171';
+    return `<span style="color:${typeColor}">${id}<span style="color:#3a5a7a">${type}</span>${offset?`<span style="color:#5a7a5a">${escH(offset)}</span>`:''}</span>`;
+  }).join('<span style="color:#1e3a5a">, </span>');
+}
+
+function filterSch() { buildSchRows(STATE.tasks); }
+function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─────────────────────────────────────────────
+// C2: Enhanced Predecessors parsing on tasks
+// ─────────────────────────────────────────────
+function parsePredecessors(prStr) {
+  // returns array of {id, type, offsetDays}
+  if (!prStr) return [];
+  return prStr.split(',').map(token => {
+    token = token.trim();
+    const m = token.match(/^(\d+)(FS|SS|FF|SF)?(?:([+-]\d+(?:\.\d+)?)\s*(edays?|days?|wks?))?$/i);
+    if (!m) return { id: token, type: 'FS', offsetDays: 0, raw: token, valid: false };
+    const offsetRaw = m[3] ? parseFloat(m[3]) : 0;
+    const unit = (m[4]||'days').toLowerCase();
+    let offsetDays = offsetRaw;
+    if (unit.startsWith('wk')) offsetDays = offsetRaw * 5;
+    return { id: m[1], type: (m[2]||'FS').toUpperCase(), offsetDays: Math.round(offsetDays), raw: token, valid: true };
+  });
+}
+
+// Enrich tasks with parsed predecessors
+function enrichPredecessors(tasks) {
+  const idMap = {};
+  tasks.forEach(t => { idMap[t.id] = t; });
+  tasks.forEach(t => {
+    t.preds = parsePredecessors(t.pr);
+    t.preds.forEach(p => {
+      if (!idMap[p.id]) {
+        // predecessor ID not found in task list
+        if (p.valid) STATE.warnings.push(`任務 ${t.id} 的前置 ID ${p.id} 不存在，已標記`);
+        p.missing = true;
+      }
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+// TOOLTIP
+// ─────────────────────────────────────────────
+function showTT(id) {
+  let task = null;
+  STATE.tasks.forEach(t => { if (String(t.id) === String(id)) task = t; });
+  if (!task) return;
+  const isCp = STATE.cpIds.has(task.id);
+  document.getElementById('ttn').textContent = task.n;
+  document.getElementById('ttd').textContent = `📅 ${task.s}${task.f && task.f !== task.s ? ' → '+task.f : ''}`;
+  document.getElementById('ttdu').textContent = task.dur ? `⏱ ${task.dur}` : '';
+  document.getElementById('ttp').textContent = task.pr ? `🔗 ${task.pr}` : '';
+  document.getElementById('ttcp').textContent = isCp && STATE.showCP ? '⚡ CRITICAL PATH' : '';
+  document.getElementById('tt').style.display = 'block';
+}
+function hideTT() { document.getElementById('tt').style.display = 'none'; }
+document.addEventListener('mousemove', e => {
+  const el = document.getElementById('tt');
+  if (el.style.display === 'block') { el.style.left = (e.clientX+14)+'px'; el.style.top = (e.clientY-55)+'px'; }
+});
+
+// ─────────────────────────────────────────────
+// CONTROLS
+// ─────────────────────────────────────────────
+function toggleSP() {
+  STATE.showSP = !STATE.showSP;
+  document.getElementById('btnSP').className = 'btn' + (STATE.showSP ? ' sp-on' : '');
+  ['statusPanel','progWrap','msList'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = el.className.replace(' hidden','') + (STATE.showSP ? '' : ' hidden');
+  });
+}
+function toggleCP() {
+  STATE.showCP = !STATE.showCP;
+  document.getElementById('btnCP').className = 'btn' + (STATE.showCP ? ' cp-on' : '');
+  render();
+}
+function setZoom(z) {
+  STATE.zoom = z;
+  document.getElementById('btnM').className = 'btn' + (z==='month' ? ' active' : '');
+  document.getElementById('btnW').className = 'btn' + (z==='week' ? ' active' : '');
+  render();
+}
+function toggleAll() {
+  const any = Object.values(STATE.collapsed).some(v => v);
+  STATE.lanes.forEach(l => { STATE.collapsed[l.id] = !any; }); render();
+}
+function toggleLane(id) { STATE.collapsed[id] = !STATE.collapsed[id]; render(); }
+function resetApp() {
+  if (STATE.animFrame) cancelAnimationFrame(STATE.animFrame);
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('uploadScreen').style.display = 'flex';
+  document.getElementById('warningBox').style.display = 'none';
+  document.getElementById('parseLog').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+}
+
+// ─────────────────────────────────────────────
+// API KEY MANAGEMENT
+// ─────────────────────────────────────────────
+function getApiKey() { return localStorage.getItem('anthropic_api_key') || ''; }
+function saveApiKey() {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if (!k.startsWith('sk-ant-')) { alert('API Key 格式不正確，應以 sk-ant- 開頭'); return; }
+  localStorage.setItem('anthropic_api_key', k);
+  document.getElementById('apiModal').classList.add('hidden');
+  openMrdModal();
+}
+function closeApiModal() { document.getElementById('apiModal').classList.add('hidden'); }
+
+// ─────────────────────────────────────────────
+// MRD MODAL
+// ─────────────────────────────────────────────
+let mrdRawText = '';
+let mrdFile = null;
+
+function openMrdModal() {
+  if (!getApiKey()) {
+    document.getElementById('apiKeyInput').value = getApiKey();
+    document.getElementById('apiModal').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('mrdModal').classList.remove('hidden');
+}
+function skipMrd() {
+  document.getElementById('mrdModal').classList.add('hidden');
+}
+
+// MRD drop zone
+const mrdDrop = document.getElementById('mrdDrop');
+const mrdFileInput = document.getElementById('mrdFileInput');
+mrdDrop.addEventListener('dragover', e => { e.preventDefault(); mrdDrop.classList.add('drag'); });
+mrdDrop.addEventListener('dragleave', () => mrdDrop.classList.remove('drag'));
+mrdDrop.addEventListener('drop', e => {
+  e.preventDefault(); mrdDrop.classList.remove('drag');
+  const f = e.dataTransfer.files[0]; if (f) loadMrdFile(f);
+});
+mrdFileInput.addEventListener('change', e => { if (e.target.files[0]) loadMrdFile(e.target.files[0]); });
+
+function loadMrdFile(file) {
+  if (!file.name.match(/\.(xlsx|xls)$/i)) {
+    document.getElementById('mrdDropStatus').textContent = '⚠ 請選擇 .xlsx 或 .xls 檔案';
+    document.getElementById('mrdDropStatus').style.color = '#f87171';
+    return;
+  }
+  mrdFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      // extract all text from all sheets
+      let text = '';
+      wb.SheetNames.forEach(name => {
+        const ws = wb.Sheets[name];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        text += `\n=== Sheet: ${name} ===\n`;
+        rows.forEach(row => {
+          const line = row.map(c => String(c||'').trim()).filter(Boolean).join(' | ');
+          if (line) text += line + '\n';
+        });
+      });
+      mrdRawText = text.slice(0, 8000); // limit tokens to leave room for response
+      document.getElementById('mrdDropStatus').textContent = `✓ ${file.name} 已載入（${wb.SheetNames.length} sheets）`;
+      document.getElementById('mrdDropStatus').style.color = '#34d399';
+      document.getElementById('btnMrdAnalyze').disabled = false;
+    } catch(err) {
+      document.getElementById('mrdDropStatus').textContent = '⚠ 無法讀取：' + err.message;
+      document.getElementById('mrdDropStatus').style.color = '#f87171';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─────────────────────────────────────────────
+// MRD AI ANALYSIS
+// ─────────────────────────────────────────────
+async function analyzeMrd() {
+  document.getElementById('mrdModal').classList.add('hidden');
+  switchTab('mrd');
+  document.getElementById('tabMrd').style.display = '';
+  document.getElementById('btnUploadMrd').style.display = '';
+
+  const content = document.getElementById('mrdContent');
+  content.innerHTML = `<div class="mrd-loading">
+    <div class="mrd-spinner"></div>
+    <div class="mrd-loading-text">AI 分析 MRD 中，請稍候...</div>
+  </div>`;
+
+  const prompt = `你是一位資深的顯示器產品開發專案經理，擅長解讀 MRD（Marketing Requirements Document）。
+
+請分析以下 MRD 內容，並以 JSON 格式回覆，不要有任何其他文字，只有 JSON。
+
+MRD 內容：
+${mrdRawText}
+
+請回傳以下 JSON 結構：
+{
+  "product": {
+    "name": "產品名稱",
+    "panel_type": "面板類型（如 QD-OLED、IPS、VA）",
+    "resolution": "解析度",
+    "refresh_rate": "更新率",
+    "size": "尺寸",
+    "mp_target": "MP 目標日期",
+    "region": "銷售地區"
+  },
+  "panel_spec": {
+    "supplier": "面板供應商",
+    "model": "面板型號（如有）",
+    "brightness": "亮度",
+    "contrast": "對比度",
+    "key_risks": ["Spec 尚未凍結的項目或風險"]
+  },
+  "certifications": [
+    {
+      "name": "認證名稱",
+      "region": "適用地區",
+      "category": "Safety/EMI/Energy/Ergonomics/Other",
+      "risk_level": "high/med/low",
+      "notes": "備註（如週期長、需要特殊樣品等）"
+    }
+  ],
+  "risks": [
+    {
+      "level": "high/med/low",
+      "item": "風險項目描述"
+    }
+  ],
+  "key_documents": ["需要準備的重要文件清單"]
+}`;
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, apiKey: getApiKey() })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    let clean = raw.replace(/```json|```/g, '').trim();
+    // repair truncated JSON: find last complete closing brace
+    clean = repairJson(clean);
+    const result = JSON.parse(clean);
+    renderMrdResult(result);
+  } catch(err) {
+    document.getElementById('mrdContent').innerHTML = `
+      <div class="mrd-error">
+        <strong>分析失敗：</strong>${escH(err.message)}<br><br>
+        請確認：<br>
+        • API Key 是否正確（格式：sk-ant-api03-...）<br>
+        • 網路是否可以連到 api.anthropic.com<br>
+        • MRD 檔案是否有實際內容
+        <div class="mrd-rerun">
+          <button class="btn" onclick="openMrdModal()">重新上傳分析</button>
+          <button class="btn" style="margin-left:8px;color:#f87171;border-color:#7f1d1d" onclick="clearApiKey()">清除 API Key</button>
+        </div>
+      </div>`;
+  }
+}
+
+function clearApiKey() {
+  localStorage.removeItem('anthropic_api_key');
+  document.getElementById('mrdContent').innerHTML = '<div style="padding:32px;text-align:center;color:#1e5a7a;font-size:11px">API Key 已清除</div>';
+}
+
+function repairJson(str) {
+  // if already valid, return as-is
+  try { JSON.parse(str); return str; } catch(e) {}
+  // try to close unclosed JSON by appending missing brackets/braces
+  let s = str.trim();
+  // remove trailing comma before closing
+  s = s.replace(/,\s*$/, '');
+  // count open braces/brackets
+  let braces = 0, brackets = 0, inStr = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; }
+    if (c === '\\' && inStr) { esc = true; continue; }
+    if (c === '"' ) { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === '{') braces++;
+    else if (c === '}') braces--;
+    else if (c === '[') brackets++;
+    else if (c === ']') brackets--;
+  }
+  // close any open arrays first, then objects
+  for (let i = 0; i < brackets; i++) s += ']';
+  for (let i = 0; i < braces; i++) s += '}';
+  try { JSON.parse(s); return s; } catch(e) {}
+  // last resort: extract just the outer object
+  const m = str.match(/^\s*(\{[\s\S]*)/);
+  if (m) {
+    let s2 = m[1].replace(/,\s*$/, '');
+    let b2 = 0;
+    for (const c of s2) { if(c==='{') b2++; else if(c==='}') b2--; }
+    for (let i = 0; i < b2; i++) s2 += '}';
+    try { JSON.parse(s2); return s2; } catch(e) {}
+  }
+  throw new Error('JSON 無法修復，請重試');
+}
+
+function renderMrdResult(r) {
+  const p = r.product || {};
+  const ps = r.panel_spec || {};
+  const certs = r.certifications || [];
+  const risks = r.risks || [];
+  const docs = r.key_documents || [];
+
+  // group certs by category
+  const certGroups = {};
+  certs.forEach(c => {
+    const cat = c.category || 'Other';
+    if (!certGroups[cat]) certGroups[cat] = [];
+    certGroups[cat].push(c);
+  });
+
+  let html = '<div class="mrd-wrap">';
+
+  // product summary cards
+  html += '<div class="mrd-section"><div class="mrd-section-title">Product Overview</div><div class="mrd-grid">';
+  const pFields = [
+    ['產品名稱', p.name], ['面板類型', p.panel_type], ['解析度', p.resolution],
+    ['更新率', p.refresh_rate], ['尺寸', p.size], ['MP 目標', p.mp_target],
+    ['銷售地區', p.region], ['面板供應商', ps.supplier], ['面板型號', ps.model],
+    ['亮度', ps.brightness], ['對比度', ps.contrast]
+  ];
+  pFields.forEach(([label, val]) => {
+    if (!val) return;
+    html += `<div class="mrd-card"><div class="mrd-card-label">${escH(label)}</div><div class="mrd-card-val">${escH(val)}</div></div>`;
+  });
+  html += '</div></div>';
+
+  // panel spec risks
+  if (ps.key_risks && ps.key_risks.length) {
+    html += '<div class="mrd-section"><div class="mrd-section-title">Panel Spec 風險</div><div class="risk-list">';
+    ps.key_risks.forEach(r => {
+      html += `<div class="risk-item med">${escH(r)}</div>`;
+    });
+    html += '</div></div>';
+  }
+
+  // certifications by category
+  if (certs.length) {
+    html += '<div class="mrd-section"><div class="mrd-section-title">認證需求清單 (' + certs.length + ')</div>';
+    Object.entries(certGroups).forEach(([cat, items]) => {
+      html += `<div style="font-size:9px;color:#3a7a9a;letter-spacing:0.08em;margin:8px 0 4px">${escH(cat)}</div>`;
+      html += '<div class="cert-list">';
+      items.forEach(c => {
+        html += `<div class="cert-item ${c.risk_level==='high'?'risk':''}">
+          <div class="cert-region">${escH(c.region||'—')}</div>
+          <div class="cert-name">${escH(c.name)}</div>
+          ${c.notes ? `<div style="font-size:9px;color:#1e5a7a;flex:1">${escH(c.notes)}</div>` : ''}
+          <div class="cert-risk ${c.risk_level||'low'}">${c.risk_level||'low'}</div>
+        </div>`;
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // project risks
+  if (risks.length) {
+    html += '<div class="mrd-section"><div class="mrd-section-title">專案風險</div><div class="risk-list">';
+    risks.forEach(r => {
+      html += `<div class="risk-item ${r.level||'low'}">${escH(r.item||'')}</div>`;
+    });
+    html += '</div></div>';
+  }
+
+  // key documents
+  if (docs.length) {
+    html += '<div class="mrd-section"><div class="mrd-section-title">需準備文件</div><div class="cert-list">';
+    docs.forEach(d => {
+      html += `<div class="cert-item"><div class="cert-name">${escH(d)}</div></div>`;
+    });
+    html += '</div></div>';
+  }
+
+  html += '</div>';
+  document.getElementById('mrdContent').innerHTML = html;
+}
+
+// ─────────────────────────────────────────────
+// POST-SCH-PARSE: show MRD prompt
+// ─────────────────────────────────────────────
+function promptMrdUpload() {
+  // show MRD button
+  document.getElementById('btnUploadMrd').style.display = '';
+  // show modal after short delay
+  setTimeout(() => {
+    if (!STATE.tasks.length) return;
+    openMrdModal();
+  }, 600);
+}
+
+</script>
+</body>
+</html>
