@@ -1295,7 +1295,12 @@ function parseDate(val, rowNum, colName) {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val) ? null : val;
   const s = String(val).trim();
-  // formats: 2026/5/12, 2026/5/12 Tue, 2026-05-12, May 12 2026
+  // ISO format from JSON serialization: 2026-04-30T00:00:00.000Z
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    const d = new Date(s);
+    return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+  // formats: 2026/5/12, 2026/5/12 Tue, 2026-05-12
   let m;
   m = s.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
   if (m) return new Date(+m[1], +m[2]-1, +m[3]);
@@ -2847,6 +2852,20 @@ const Storage = {
 let CURRENT_PROJECT_ID = null;
 
 function stateToProject(name, schFilename, mrdFilename) {
+  // serialize tasks: strip Date objects, keep ISO strings
+  const serialTasks = STATE.tasks.map(t => ({
+    ...t,
+    startDate:  t.startDate  instanceof Date ? t.startDate.toISOString()  : (t.startDate  || null),
+    finishDate: t.finishDate instanceof Date ? t.finishDate.toISOString() : (t.finishDate || null),
+    preds: t.preds || [],
+  }));
+  const serialLanes = STATE.lanes.map(lane => ({
+    ...lane,
+    tasks: lane.tasks.map(t => {
+      const ft = serialTasks.find(st => String(st.id) === String(t.id));
+      return ft || t;
+    })
+  }));
   return {
     id: CURRENT_PROJECT_ID || ('proj_' + Date.now()),
     name: name || schFilename,
@@ -2856,8 +2875,8 @@ function stateToProject(name, schFilename, mrdFilename) {
     updatedAt: fmtDate(TODAY),
     updatedTime: new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'}),
     version: PSM_VERSION,
-    tasks: STATE.tasks,
-    lanes: STATE.lanes,
+    tasks: serialTasks,
+    lanes: serialLanes,
     mrdResult: STATE.mrdResult || null,
     cpIds: [...STATE.cpIds],
     longestPath: STATE.longestPath ? [...STATE.longestPath] : [],
@@ -2880,11 +2899,24 @@ function projectToState(proj) {
   STATE.floatMap    = proj.floatMap || {};
   STATE.projectStart = proj.projectStart ? new Date(proj.projectStart) : null;
   STATE.projectEnd   = proj.projectEnd   ? new Date(proj.projectEnd)   : null;
-  // restore dates on tasks
+  // always restore dates (JSON serialisation converts Date→string)
   STATE.tasks.forEach(t => {
-    if (t.s && !t.startDate)  t.startDate  = parseDate(t.s, 0, '');
-    if (t.f && !t.finishDate) t.finishDate = parseDate(t.f, 0, '') || t.startDate;
-    if (!t.preds) t.preds = parsePredecessors(t.pr || '');
+    // force re-parse: stored value might be ISO string from JSON
+    t.startDate  = (t.startDate instanceof Date && !isNaN(t.startDate))
+      ? t.startDate
+      : (t.s ? parseDate(t.s, 0, '') : null);
+    t.finishDate = (t.finishDate instanceof Date && !isNaN(t.finishDate))
+      ? t.finishDate
+      : (t.f ? (parseDate(t.f, 0, '') || t.startDate) : t.startDate);
+    if (!t.preds || typeof t.preds[0] === 'string')
+      t.preds = parsePredecessors(t.pr || '');
+  });
+  // also restore lane task dates
+  STATE.lanes.forEach(lane => {
+    lane.tasks.forEach(t => {
+      const found = STATE.tasks.find(st => String(st.id) === String(t.id));
+      if (found) { t.startDate = found.startDate; t.finishDate = found.finishDate; }
+    });
   });
 }
 
@@ -3021,6 +3053,7 @@ function openProject(id) {
   showMainApp(proj.name, STATE.tasks);
   buildStatusPanel();
   render();
+  setTimeout(() => drawConnections(), 200);
   if (proj.mrdResult) {
     document.getElementById('tabMrd').style.display = '';
     document.getElementById('btnUploadMrd').style.display = '';
@@ -3135,6 +3168,35 @@ function handleImport(e) {
 
 // ── On app start: check for active project ──
 function initApp() {
+  // ── Version migration: clear corrupt data from older versions ──
+  const APP_DATA_VERSION = '2'; // bump when data format changes
+  if (localStorage.getItem('psmv_data_ver') !== APP_DATA_VERSION) {
+    // migrate: re-validate all stored projects
+    const ids = Storage.listProjects();
+    ids.forEach(id => {
+      const p = Storage.loadProject(id);
+      if (!p) return;
+      // strip and re-flag tasks that have non-Date date fields
+      let dirty = false;
+      (p.tasks||[]).forEach(t => {
+        if (t.startDate && !(t.startDate instanceof Date)) {
+          dirty = true;
+          // keep as-is — projectToState will re-parse from t.s
+          delete t.startDate; delete t.finishDate;
+        }
+      });
+      (p.lanes||[]).forEach(lane => {
+        (lane.tasks||[]).forEach(t => {
+          if (t.startDate && !(t.startDate instanceof Date)) {
+            delete t.startDate; delete t.finishDate;
+          }
+        });
+      });
+      if (dirty) Storage.saveProject(p);
+    });
+    localStorage.setItem('psmv_data_ver', APP_DATA_VERSION);
+  }
+
   const activeId = Storage.getActive();
   const ids = Storage.listProjects();
   if (activeId && ids.includes(activeId)) {
@@ -3147,6 +3209,7 @@ function initApp() {
       showMainApp(proj.name, STATE.tasks);
       buildStatusPanel();
       render();
+      setTimeout(() => drawConnections(), 200);
       if (proj.mrdResult) {
         document.getElementById('tabMrd').style.display = '';
         document.getElementById('btnUploadMrd').style.display = '';
