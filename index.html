@@ -12,7 +12,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 #app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:16px}
 
 /* ── Upload Screen ── */
-#uploadScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:24px}
+#uploadScreen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:24px}
 .upload-title{font-size:22px;font-weight:500;color:#7dd3fc;letter-spacing:0.1em;text-transform:uppercase}
 .upload-sub{font-size:11px;color:#3a8aaa;letter-spacing:0.07em}
 .version-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#1e5a7a;padding:3px 10px;border:1px solid #0d2d4a;border-radius:3px;letter-spacing:0.08em;background:#06101a}
@@ -248,6 +248,39 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 .mrd-error{padding:16px;background:#0a0608;border:1px solid #7f1d1d40;border-radius:4px;color:#f87171;font-size:10px;line-height:1.6}
 .mrd-rerun{margin-top:12px}
 
+
+/* ── Project Hub ── */
+#hubScreen{display:none;flex-direction:column;align-items:center;min-height:100vh;padding:40px 16px;gap:24px}
+.hub-header{text-align:center}
+.hub-title{font-size:20px;font-weight:500;color:#7dd3fc;letter-spacing:0.08em;text-transform:uppercase}
+.hub-sub{font-size:10px;color:#3a8aaa;letter-spacing:0.08em;margin-top:4px}
+.hub-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.hub-btn{font-size:11px;padding:8px 18px;border-radius:4px;cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s}
+.hub-btn-primary{background:#061828;border:1px solid #0ea5e9;color:#38bdf8;box-shadow:0 0 8px #0ea5e920}
+.hub-btn-primary:hover{background:#0a2030;box-shadow:0 0 14px #0ea5e940}
+.hub-btn-sec{background:transparent;border:1px solid #0d2d4a;color:#4a9abe}
+.hub-btn-sec:hover{background:#080d14;color:#7dd3fc}
+.hub-projects{width:100%;max-width:900px}
+.hub-section-title{font-size:9px;color:#1e5a7a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid #0d2d4a}
+.hub-empty{text-align:center;padding:32px;color:#1e5a7a;font-size:11px;border:1px dashed #0d2d4a;border-radius:6px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.proj-card{background:#06101a;border:1px solid #0d2d4a;border-radius:6px;padding:14px;cursor:pointer;transition:all 0.15s;position:relative}
+.proj-card:hover{border-color:#0ea5e9;background:#071828;box-shadow:0 0 12px #0ea5e920}
+.proj-card.active-proj{border-color:#0ea5e940;background:#06101f}
+.proj-card-name{font-size:13px;font-weight:500;color:#7dd3fc;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-card-meta{font-size:10px;color:#3a7a9a;margin:2px 0}
+.proj-card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.proj-tag{font-size:8px;padding:1px 6px;border-radius:2px;letter-spacing:0.05em}
+.proj-tag-sch{background:#0a1a12;color:#34d399;border:1px solid #05966940}
+.proj-tag-mrd{background:#06101a;color:#38bdf8;border:1px solid #0ea5e940}
+.proj-card-actions{display:flex;gap:5px;margin-top:10px}
+.proj-card-btn{font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;letter-spacing:0.05em;border:1px solid #0d2d4a;background:transparent;color:#4a9abe}
+.proj-card-btn:hover{background:#0a1828;color:#7dd3fc}
+.proj-card-btn.danger{color:#f87171;border-color:#7f1d1d}
+.proj-card-btn.danger:hover{background:#1a0808}
+.proj-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.proj-updated{font-size:9px;color:#1e5a7a;white-space:nowrap}
+
 /* ── Parse log ── */
 #parseLog{display:none;margin-top:8px;background:#06101a;border:1px solid #0d2d4a;border-radius:4px;padding:10px;font-size:10px;color:#3a7a9a;max-height:120px;overflow-y:auto}
 .log-ok{color:#34d399}.log-warn{color:#fbbf24}.log-err{color:#f87171}
@@ -257,12 +290,49 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 <div id="app">
 
 <!-- Upload Screen -->
+<!-- Project Hub -->
+<div id="hubScreen">
+  <div class="hub-header">
+    <div class="hub-title">Project Schedule Manager</div>
+    <div class="hub-sub">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
+    <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <div class="version-badge">Version <span class="version-num">V0.014</span></div>
+      <div class="version-badge">2026/05/25</div>
+    </div>
+  </div>
+
+  <div class="hub-actions">
+    <button class="hub-btn hub-btn-primary" onclick="startNewProject()">＋ 新建專案</button>
+    <button class="hub-btn hub-btn-sec" onclick="importProject()">↑ 載入 .psmv</button>
+    <input type="file" id="importInput" accept=".psmv,.json" style="display:none" onchange="handleImport(event)">
+  </div>
+
+  <div class="hub-projects">
+    <div style="display:flex;align-items:center;justify-content:space-between"><div class="hub-section-title">我的專案</div><div id="hubUsage" style="font-size:9px;color:#1e5a7a"></div></div>
+    <div id="projGrid" class="proj-grid"></div>
+    <div id="hubEmpty" class="hub-empty" style="display:none">
+      還沒有專案 — 點「新建專案」上傳第一個 SCH 檔案
+    </div>
+  </div>
+
+  <div class="hub-projects" style="margin-top:8px">
+    <div class="hub-section-title">Changelog</div>
+    <div class="changelog" style="width:100%">
+      <div class="changelog-hdr" onclick="toggleCL()">
+        <span class="changelog-title">版本記錄</span>
+        <span class="changelog-toggle" id="clToggle">▼ 展開</span>
+      </div>
+      <div class="changelog-body" id="clBody"></div>
+    </div>
+  </div>
+</div>
+
 <div id="uploadScreen">
   <div style="text-align:center">
     <div class="upload-title">Project Schedule Viewer</div>
     <div class="upload-sub" style="margin-top:4px">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.013</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.014</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -400,6 +470,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div>
       <div class="title" id="appTitle">Schedule Viewer</div>
       <div class="subtitle" id="appSub"></div>
+    <div style="font-size:9px;color:#1e5a7a;margin-top:2px" id="appSavedAt"></div>
     </div>
     <div class="controls">
       <div class="tbadge" id="todayBadge"></div>
@@ -410,7 +481,11 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
       <button class="btn" onclick="toggleAll()">≡</button>
       <button class="btn" id="btnUploadMrd" onclick="openMrdModal()" style="display:none;color:#a78bfa;border-color:#4c1d95">+ MRD</button>
       <button class="btn" onclick="exportExcel()" style="color:#34d399;border-color:#059669">↓ EXPORT</button>
-      <button class="btn danger" onclick="resetApp()">↺ 重新上傳</button>
+      <button class="btn" onclick="updateSCH()" style="color:#34d399;border-color:#059669">↑ 更新SCH</button>
+      <button class="btn" onclick="updateMRD()" style="color:#38bdf8;border-color:#0ea5e9" id="btnUpdateMrd">↑ 更新MRD</button>
+      <button class="btn" onclick="saveProjectNow()" style="color:#a78bfa;border-color:#4c1d95">💾 儲存</button>
+      <button class="btn" onclick="exportProject()" style="color:#fbbf24;border-color:#d97706">↓ .psmv</button>
+      <button class="btn danger" onclick="backToHub()">← 首頁</button>
     </div>
   </div>
 
@@ -925,9 +1000,13 @@ function parseWorkbook(wb, filename) {
   if (STATE.warnings.length > 0) showWarnings();
 
   // show main app
+  STATE._schFilename = filename;
+  if (!CURRENT_PROJECT_ID) CURRENT_PROJECT_ID = 'proj_' + Date.now();
   showMainApp(filename, tasks);
   buildStatusPanel();
   render();
+  // auto-save immediately after parse
+  setTimeout(() => saveProjectNow(false), 800);
   promptMrdUpload();
 }
 
@@ -1127,6 +1206,7 @@ function showWarnings() {
 
 function showMainApp(filename, tasks) {
   document.getElementById('uploadScreen').style.display = 'none';
+  document.getElementById('hubScreen').style.display = 'none';
   document.getElementById('mainApp').style.display = 'block';
   const name = filename.replace(/\.(xlsx|xls)$/i, '');
   document.getElementById('appTitle').textContent = name;
@@ -2068,6 +2148,9 @@ function renderMrdResult(r) {
 
   // store result for cert tree dynamic rendering
   STATE.mrdResult = r;
+  STATE._mrdFilename = mrdFile ? mrdFile.name : (STATE._mrdFilename||'');
+  // auto-save project with MRD result
+  setTimeout(() => saveProjectNow(true), 500);
   // if currently on cert tab, refresh it
   if (document.getElementById('panelCert').classList.contains('active')) {
     renderDynCertTree(r);
@@ -2415,6 +2498,388 @@ function toggleCL() {
   tog.textContent = open ? '▲ 收合' : '▼ 展開';
 }
 
+
+// ═════════════════════════════════════════════
+// STORAGE ABSTRACTION (expandable to IndexedDB/backend)
+// ═════════════════════════════════════════════
+const PSM_VERSION = 'V0.014';
+const STORE_INDEX = 'psmv_projects';
+const STORE_PREFIX = 'psmv_proj_';
+const STORE_ACTIVE = 'psmv_active';
+
+const Storage = {
+  // list all project ids
+  listProjects() {
+    try {
+      return JSON.parse(localStorage.getItem(STORE_INDEX) || '[]');
+    } catch { return []; }
+  },
+  // save project index
+  _saveIndex(ids) {
+    localStorage.setItem(STORE_INDEX, JSON.stringify(ids));
+  },
+  // load a project by id
+  loadProject(id) {
+    try {
+      const raw = localStorage.getItem(STORE_PREFIX + id);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  },
+  // save a project
+  saveProject(proj) {
+    const ids = this.listProjects();
+    if (!ids.includes(proj.id)) ids.push(proj.id);
+    this._saveIndex(ids);
+    // estimate size
+    const data = JSON.stringify(proj);
+    try {
+      localStorage.setItem(STORE_PREFIX + proj.id, data);
+      return { ok: true, sizeKB: Math.round(data.length / 1024) };
+    } catch(e) {
+      return { ok: false, error: 'localStorage 空間不足，請匯出 .psmv 備份後清除舊專案' };
+    }
+  },
+  // delete a project
+  deleteProject(id) {
+    const ids = this.listProjects().filter(i => i !== id);
+    this._saveIndex(ids);
+    localStorage.removeItem(STORE_PREFIX + id);
+  },
+  // set active project
+  setActive(id) { localStorage.setItem(STORE_ACTIVE, id); },
+  getActive() { return localStorage.getItem(STORE_ACTIVE); },
+  clearActive() { localStorage.removeItem(STORE_ACTIVE); },
+  // estimate total usage
+  getUsage() {
+    let total = 0;
+    for (let k in localStorage) {
+      if (k.startsWith('psmv_')) total += (localStorage[k]||'').length;
+    }
+    return Math.round(total / 1024);
+  }
+};
+
+// ═════════════════════════════════════════════
+// PROJECT STATE SNAPSHOT
+// ═════════════════════════════════════════════
+let CURRENT_PROJECT_ID = null;
+
+function stateToProject(name, schFilename, mrdFilename) {
+  return {
+    id: CURRENT_PROJECT_ID || ('proj_' + Date.now()),
+    name: name || schFilename,
+    schFilename: schFilename || '',
+    mrdFilename: mrdFilename || '',
+    createdAt: CURRENT_PROJECT_ID ? undefined : fmtDate(TODAY),
+    updatedAt: fmtDate(TODAY),
+    updatedTime: new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'}),
+    version: PSM_VERSION,
+    tasks: STATE.tasks,
+    lanes: STATE.lanes,
+    mrdResult: STATE.mrdResult || null,
+    cpIds: [...STATE.cpIds],
+    longestPath: STATE.longestPath ? [...STATE.longestPath] : [],
+    mpPath: STATE.mpPath ? [...STATE.mpPath] : [],
+    projectStart: STATE.projectStart ? STATE.projectStart.toISOString() : null,
+    projectEnd:   STATE.projectEnd   ? STATE.projectEnd.toISOString()   : null,
+    distMap: STATE.distMap || {},
+    floatMap: STATE.floatMap || {},
+  };
+}
+
+function projectToState(proj) {
+  STATE.tasks       = proj.tasks || [];
+  STATE.lanes       = proj.lanes || [];
+  STATE.mrdResult   = proj.mrdResult || null;
+  STATE.cpIds       = new Set(proj.cpIds || []);
+  STATE.longestPath = new Set(proj.longestPath || []);
+  STATE.mpPath      = new Set(proj.mpPath || []);
+  STATE.distMap     = proj.distMap || {};
+  STATE.floatMap    = proj.floatMap || {};
+  STATE.projectStart = proj.projectStart ? new Date(proj.projectStart) : null;
+  STATE.projectEnd   = proj.projectEnd   ? new Date(proj.projectEnd)   : null;
+  // restore dates on tasks
+  STATE.tasks.forEach(t => {
+    if (t.s && !t.startDate)  t.startDate  = parseDate(t.s, 0, '');
+    if (t.f && !t.finishDate) t.finishDate = parseDate(t.f, 0, '') || t.startDate;
+    if (!t.preds) t.preds = parsePredecessors(t.pr || '');
+  });
+}
+
+function saveProjectNow(silent) {
+  if (!STATE.tasks.length) return;
+  const titleEl = document.getElementById('appTitle');
+  const name = titleEl ? titleEl.textContent : 'Project';
+  const schF = STATE._schFilename || name;
+  const mrdF = STATE._mrdFilename || '';
+  const proj = stateToProject(name, schF, mrdF);
+  if (!CURRENT_PROJECT_ID) CURRENT_PROJECT_ID = proj.id;
+  else proj.id = CURRENT_PROJECT_ID;
+  const result = Storage.saveProject(proj);
+  Storage.setActive(CURRENT_PROJECT_ID);
+  if (!silent) {
+    const savedEl = document.getElementById('appSavedAt');
+    if (savedEl) {
+      savedEl.textContent = result.ok
+        ? `💾 已儲存 ${proj.updatedTime}  ·  ${result.sizeKB}KB`
+        : `⚠ ${result.error}`;
+    }
+  }
+  return result;
+}
+
+// auto-save every 60s when project is open
+setInterval(() => { if (STATE.tasks.length) saveProjectNow(true); }, 60000);
+
+// ═════════════════════════════════════════════
+// PROJECT HUB
+// ═════════════════════════════════════════════
+function showHub() {
+  document.getElementById('hubScreen').style.display = 'flex';
+  document.getElementById('uploadScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'none';
+  renderProjGrid();
+  // move changelog into hub
+  const clWrap = document.querySelector('#hubScreen .changelog');
+  if (clWrap) {
+    const clBody = document.getElementById('clBody');
+    if (clBody) clBody.innerHTML = buildChangelogHTML();
+  }
+}
+
+function buildChangelogHTML() {
+  return `
+    <div class="cl-entry">
+      <div class="cl-ver"><span class="cl-ver-num">V0.014</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+      <ul class="cl-items">
+        <li class="cl-item">Project Hub：專案卡片首頁，多專案管理</li>
+        <li class="cl-item">localStorage 自動儲存（每60秒），開啟App自動還原</li>
+        <li class="cl-item">專案檔 .psmv 匯出與匯入（備份、分享、跨裝置）</li>
+        <li class="cl-item">更新SCH / 更新MRD 分別操作，不互相影響</li>
+        <li class="cl-item">Storage 抽象層，預留 IndexedDB / 後端升級空間</li>
+      </ul>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-ver"><span class="cl-ver-num">V0.013</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+      <ul class="cl-items">
+        <li class="cl-item">狀態面板新增「下一步行動建議」，依距離天數自動給出提醒</li>
+        <li class="cl-item">Cert Tree 動態從 MRD AI 分析結果生成</li>
+        <li class="cl-item">Excel Summary Sheet 加入 App 版本號</li>
+      </ul>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-ver"><span class="cl-ver-num">V0.012</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-fix">FIX</span></div>
+      <ul class="cl-items">
+        <li class="cl-item">Excel 匯出欄位錯位修正（Finish / Predecessors）</li>
+        <li class="cl-item">Excel 回歸乾淨 Raw SCH 風格</li>
+      </ul>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-ver"><span class="cl-ver-num">V0.001 ~ V0.011</span><span class="cl-ver-date">2026/05/22~25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+      <ul class="cl-items">
+        <li class="cl-item">Tron 甘特圖、關鍵路徑走線、狀態面板、RAW SCH、MRD AI分析、Cert Tree</li>
+      </ul>
+    </div>`;
+}
+
+function renderProjGrid() {
+  const ids   = Storage.listProjects();
+  const grid  = document.getElementById('projGrid');
+  const empty = document.getElementById('hubEmpty');
+  const usage = Storage.getUsage();
+
+  // update usage display
+  const usageEl = document.getElementById('hubUsage');
+  if (usageEl) usageEl.textContent = `localStorage: ${usage}KB 已用`;
+
+  if (!ids.length) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = ids.map(id => {
+    const p = Storage.loadProject(id);
+    if (!p) return '';
+    const isActive = id === CURRENT_PROJECT_ID;
+    const taskCount = (p.tasks||[]).length;
+    const msCount   = (p.tasks||[]).filter(t=>t.ms).length;
+    const hasMrd    = !!p.mrdResult;
+    const updStr    = p.updatedAt ? `${p.updatedAt} ${p.updatedTime||''}` : '—';
+    return `<div class="proj-card${isActive?' active-proj':''}" onclick="openProject('${id}')">
+      <div class="proj-card-top">
+        <div class="proj-card-name" title="${escH(p.name)}">${escH(p.name)}</div>
+        <div class="proj-updated">${updStr}</div>
+      </div>
+      <div class="proj-card-meta">${taskCount} tasks · ${msCount} milestones · ${(p.lanes||[]).length} lanes</div>
+      <div class="proj-card-meta" style="color:#1e5a7a">${p.schFilename||''}</div>
+      <div class="proj-card-tags">
+        <span class="proj-tag proj-tag-sch">SCH</span>
+        ${hasMrd?'<span class="proj-tag proj-tag-mrd">MRD</span>':''}
+        <span class="proj-tag" style="background:#06101a;color:#1e5a7a;border:1px solid #0d2d4a">${p.version||'—'}</span>
+      </div>
+      <div class="proj-card-actions" onclick="event.stopPropagation()">
+        <button class="proj-card-btn" onclick="openProject('${id}')">開啟</button>
+        <button class="proj-card-btn" onclick="exportProjectById('${id}')">↓ .psmv</button>
+        <button class="proj-card-btn danger" onclick="deleteProject('${id}')">刪除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openProject(id) {
+  const proj = Storage.loadProject(id);
+  if (!proj) { alert('專案資料遺失'); return; }
+  CURRENT_PROJECT_ID = id;
+  Storage.setActive(id);
+  projectToState(proj);
+  STATE._schFilename = proj.schFilename;
+  STATE._mrdFilename = proj.mrdFilename;
+  showMainApp(proj.name, STATE.tasks);
+  buildStatusPanel();
+  render();
+  if (proj.mrdResult) {
+    document.getElementById('tabMrd').style.display = '';
+    document.getElementById('btnUploadMrd').style.display = '';
+  }
+  const savedEl = document.getElementById('appSavedAt');
+  if (savedEl) savedEl.textContent = `上次儲存：${proj.updatedAt} ${proj.updatedTime||''}  ·  ${proj.version||''}`;
+}
+
+function deleteProject(id) {
+  const proj = Storage.loadProject(id);
+  if (!proj) return;
+  if (!confirm(`確定刪除「${proj.name}」？此操作不可復原。`)) return;
+  Storage.deleteProject(id);
+  if (CURRENT_PROJECT_ID === id) CURRENT_PROJECT_ID = null;
+  renderProjGrid();
+}
+
+function startNewProject() {
+  CURRENT_PROJECT_ID = null;
+  STATE.tasks = [];
+  STATE.lanes = [];
+  STATE.mrdResult = null;
+  document.getElementById('hubScreen').style.display = 'none';
+  document.getElementById('uploadScreen').style.display = 'flex';
+  document.getElementById('fileInput').value = '';
+}
+
+function backToHub() {
+  if (STATE.tasks.length) saveProjectNow(true);
+  document.getElementById('mainApp').style.display = 'none';
+  showHub();
+}
+
+// ── Update SCH only ──
+function updateSCH() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.xlsx,.xls';
+  input.onchange = e => {
+    if (e.target.files[0]) {
+      const f = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
+          parseWorkbook(wb, f.name);
+          STATE._schFilename = f.name;
+          // re-save with existing MRD
+          saveProjectNow(false);
+        } catch(err) { alert('解析失敗：' + err.message); }
+      };
+      reader.readAsArrayBuffer(f);
+    }
+  };
+  input.click();
+}
+
+// ── Update MRD only ──
+function updateMRD() {
+  openMrdModal();
+}
+
+// ── Export project as .psmv ──
+function exportProject() {
+  if (!STATE.tasks.length) { alert('請先開啟專案'); return; }
+  const name = document.getElementById('appTitle').textContent || 'project';
+  const proj = stateToProject(name, STATE._schFilename||name, STATE._mrdFilename||'');
+  if (CURRENT_PROJECT_ID) proj.id = CURRENT_PROJECT_ID;
+  const blob = new Blob([JSON.stringify(proj, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}_${fmtDate(TODAY).replace(/\//g,'-')}.psmv`;
+  a.click();
+}
+
+function exportProjectById(id) {
+  const proj = Storage.loadProject(id);
+  if (!proj) return;
+  const blob = new Blob([JSON.stringify(proj, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${proj.name}_${proj.updatedAt||'backup'}.psmv`.replace(/\//g,'-');
+  a.click();
+}
+
+// ── Import .psmv ──
+function importProject() {
+  document.getElementById('importInput').click();
+}
+
+function handleImport(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const proj = JSON.parse(ev.target.result);
+      if (!proj.tasks || !proj.name) throw new Error('無效的專案檔格式');
+      // assign new id if conflict
+      const existing = Storage.loadProject(proj.id);
+      if (existing && existing.name !== proj.name) {
+        proj.id = 'proj_' + Date.now();
+      }
+      const result = Storage.saveProject(proj);
+      if (!result.ok) { alert(result.error); return; }
+      alert(`已匯入「${proj.name}」(${result.sizeKB}KB)`);
+      renderProjGrid();
+    } catch(err) { alert('匯入失敗：' + err.message); }
+  };
+  reader.readAsText(f);
+  e.target.value = '';
+}
+
+// ── On app start: check for active project ──
+function initApp() {
+  const activeId = Storage.getActive();
+  const ids = Storage.listProjects();
+  if (activeId && ids.includes(activeId)) {
+    const proj = Storage.loadProject(activeId);
+    if (proj && proj.tasks && proj.tasks.length) {
+      CURRENT_PROJECT_ID = activeId;
+      projectToState(proj);
+      STATE._schFilename = proj.schFilename;
+      STATE._mrdFilename = proj.mrdFilename;
+      showMainApp(proj.name, STATE.tasks);
+      buildStatusPanel();
+      render();
+      if (proj.mrdResult) {
+        document.getElementById('tabMrd').style.display = '';
+        document.getElementById('btnUploadMrd').style.display = '';
+      }
+      const savedEl = document.getElementById('appSavedAt');
+      if (savedEl) savedEl.textContent = `上次儲存：${proj.updatedAt} ${proj.updatedTime||''}`;
+      return;
+    }
+  }
+  // no active project → show hub
+  showHub();
+}
+
+// ── Init ──
+document.addEventListener("DOMContentLoaded", initApp);
 </script>
 </body>
 </html>
