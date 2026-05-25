@@ -1786,86 +1786,244 @@ function promptMrdUpload() {
 
 
 // ─────────────────────────────────────────────
-// EXCEL EXPORT
+// EXCEL EXPORT (styled)
 // ─────────────────────────────────────────────
+
+// Color palette (ARGB hex, no #)
+const XL = {
+  // header backgrounds
+  HDR_DARK:   'FF1E2D3D',  // dark navy
+  HDR_BLUE:   'FF0F3460',  // deep blue
+  HDR_GREEN:  'FF0A3020',  // deep green
+  HDR_AMBER:  'FF3D2000',  // deep amber
+  HDR_PURPLE: 'FF2D1060',  // deep purple
+  // row fills
+  CP_AMBER:   'FF2D1E00',  // critical path row tint
+  MS_BLUE:    'FF0A1828',  // milestone row tint
+  ALT_ROW:    'FF0A0F18',  // alternating row
+  WHITE:      'FF060A10',  // base dark bg
+  // fonts
+  FONT_HDR:   'FFFFFFFF',  // white header text
+  FONT_CP:    'FFFBBF24',  // amber for CP
+  FONT_MS:    'FF38BDF8',  // blue for milestones
+  FONT_PAST:  'FFEF4444',  // red for overdue
+  FONT_SOON:  'FFFBBF24',  // amber for soon
+  FONT_OK:    'FF34D399',  // green for on track
+  FONT_BODY:  'FF8AB4CC',  // normal body text
+  FONT_DIM:   'FF3A7A9A',  // dim text
+  FONT_ID:    'FF1E5A7A',  // ID column
+  BORDER:     'FF0D2D4A',  // border color
+};
+
+function xlCell(v, opts={}) {
+  const c = { v, t: typeof v === 'number' ? 'n' : 's' };
+  const fill = opts.bg ? { patternType:'solid', fgColor:{rgb:opts.bg} } : undefined;
+  const font = {
+    name: 'Segoe UI',
+    sz: opts.sz || 9,
+    bold: opts.bold || false,
+    color: { rgb: opts.color || XL.FONT_BODY },
+    italic: opts.italic || false
+  };
+  const alignment = {
+    vertical: 'center',
+    horizontal: opts.align || 'left',
+    wrapText: opts.wrap || false,
+    indent: opts.indent || 0
+  };
+  const border = {
+    top:    { style:'thin', color:{rgb:XL.BORDER} },
+    bottom: { style:'thin', color:{rgb:XL.BORDER} },
+    left:   { style:'thin', color:{rgb:XL.BORDER} },
+    right:  { style:'thin', color:{rgb:XL.BORDER} }
+  };
+  c.s = { fill, font, alignment, border };
+  if (opts.numFmt) c.z = opts.numFmt;
+  return c;
+}
+
+function xlHdr(v, bg, opts={}) {
+  return xlCell(v, { bg: bg||XL.HDR_DARK, color:XL.FONT_HDR, bold:true, sz:9, align:'center', ...opts });
+}
+
+function applyToSheet(ws, data, colWidths) {
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  // re-write all cells with styling
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({r:R,c:C});
+      if (!ws[addr]) ws[addr] = { v:'', t:'s' };
+      const cell = ws[addr];
+      const rowData = data[R];
+      if (!rowData) continue;
+      const cellDef = rowData[C];
+      if (cellDef && typeof cellDef === 'object' && cellDef.s) {
+        ws[addr] = cellDef;
+      }
+    }
+  }
+  if (colWidths) ws['!cols'] = colWidths;
+  // freeze first row
+  ws['!freeze'] = { xSplit:0, ySplit:1, topLeftCell:'A2', activePane:'bottomLeft' };
+}
+
 function exportExcel() {
   if (!STATE.tasks.length) { alert('請先上傳 SCH 檔案'); return; }
-
   const wb = XLSX.utils.book_new();
+  const today = fmtDate(TODAY);
+  const projName = document.getElementById('appTitle').textContent || 'Schedule';
 
-  // ── Sheet 1: Schedule with CP & Float ──
-  const schRows = [['ID','Task Name','Level','Duration','Start','Finish','Predecessors','Is Milestone','Is Critical Path','Float (days)','Lane']];
-  STATE.tasks.forEach(t => {
-    const isCp = STATE.cpIds.has(t.id);
-    const floatVal = STATE.floatMap[t.id] !== undefined ? STATE.floatMap[t.id] : '';
-    const lane = STATE.lanes.find(l => l.tasks.some(lt => lt.id === t.id));
-    schRows.push([
-      t.id,
-      '  '.repeat(t.lv) + t.n,
-      t.lv,
-      t.dur || '',
-      t.s,
-      t.f !== t.s ? t.f : '',
-      t.pr || '',
-      t.ms ? 'Yes' : '',
-      isCp ? 'Yes' : '',
-      floatVal,
-      lane ? lane.label : ''
+  // ════════════════════════════════════════
+  // SHEET 1: Schedule (Full)
+  // ════════════════════════════════════════
+  const S1_HDRS = ['ID','Task Name','Duration','Start','Finish','Predecessors','Lane','Milestone','Critical Path'];
+  const s1data = [
+    S1_HDRS.map((h,i) => xlHdr(h, XL.HDR_DARK))
+  ];
+
+  STATE.tasks.forEach((t,ri) => {
+    const isCp  = STATE.cpIds.has(t.id);
+    const inLng = STATE.longestPath && STATE.longestPath.has(t.id);
+    const inMp  = STATE.mpPath && STATE.mpPath.has(t.id);
+    const lane  = STATE.lanes.find(l => l.tasks.some(lt => lt.id === t.id));
+    const diff  = t.startDate ? Math.round((t.startDate - TODAY) / 86400000) : null;
+    const isOverdue = diff !== null && diff < 0 && t.ms;
+    const isSoon    = diff !== null && diff >= 0 && diff <= 14 && t.ms;
+
+    // row background
+    const rowBg = t.ms ? XL.MS_BLUE : isCp ? XL.CP_AMBER : (ri%2===0 ? XL.WHITE : XL.ALT_ROW);
+
+    // CP label
+    let cpLabel = '';
+    if (inLng && inMp) cpLabel = '⚡ 工程鏈 + MP鏈';
+    else if (inLng) cpLabel = '⚡ 最長工程鏈';
+    else if (inMp)  cpLabel = '🎯 MP交付鏈';
+
+    // task name indent
+    const indent = t.lv;
+    const nameColor = t.ms ? XL.FONT_MS : isCp ? XL.FONT_CP : XL.FONT_BODY;
+    const dateColor = isOverdue ? XL.FONT_PAST : isSoon ? XL.FONT_SOON : XL.FONT_OK;
+
+    s1data.push([
+      xlCell(t.id,  { bg:rowBg, color:XL.FONT_ID, align:'center', bold:false }),
+      xlCell(t.n,   { bg:rowBg, color:nameColor, bold:t.lv===0, indent }),
+      xlCell(t.dur||'', { bg:rowBg, color:XL.FONT_DIM, align:'center' }),
+      xlCell(t.s,   { bg:rowBg, color:dateColor }),
+      xlCell(t.f !== t.s ? t.f : '', { bg:rowBg, color:dateColor }),
+      xlCell(t.pr||'', { bg:rowBg, color:'FF4A7A9A', sz:8 }),
+      xlCell(lane ? lane.label : '', { bg:rowBg, color:XL.FONT_DIM }),
+      xlCell(t.ms ? '◆' : '', { bg:rowBg, color:XL.FONT_MS, align:'center', bold:true }),
+      xlCell(cpLabel, { bg:rowBg, color:isCp?XL.FONT_CP:XL.FONT_DIM, sz:8 }),
     ]);
   });
-  const wsSchd = XLSX.utils.aoa_to_sheet(schRows);
-  // column widths
-  wsSchd['!cols'] = [
-    {wch:6},{wch:45},{wch:6},{wch:12},{wch:14},{wch:14},{wch:20},{wch:10},{wch:14},{wch:12},{wch:18}
+
+  const ws1 = XLSX.utils.aoa_to_sheet(s1data.map(r => r.map(c => c.v !== undefined ? c : {v:'',t:'s'})));
+  applyToSheet(ws1, s1data, [
+    {wch:6},{wch:48},{wch:12},{wch:13},{wch:13},{wch:22},{wch:20},{wch:8},{wch:18}
+  ]);
+  // row heights
+  ws1['!rows'] = s1data.map((_,i) => ({ hpt: i===0 ? 20 : 16 }));
+  XLSX.utils.book_append_sheet(wb, ws1, '📋 Schedule');
+
+  // ════════════════════════════════════════
+  // SHEET 2: Critical Path
+  // ════════════════════════════════════════
+  const cpTasks = STATE.tasks.filter(t => STATE.cpIds.has(t.id));
+  const s2data = [
+    ['ID','Task Name','Duration','Start','Finish','Path Type','Predecessors'].map(h => xlHdr(h, XL.HDR_AMBER))
   ];
-  XLSX.utils.book_append_sheet(wb, wsSchd, 'Schedule');
-
-  // ── Sheet 2: Critical Path only ──
-  const cpRows = [['ID','Task Name','Duration','Start','Finish','Predecessors','Float']];
-  STATE.tasks.filter(t => STATE.cpIds.has(t.id)).forEach(t => {
-    cpRows.push([t.id, t.n, t.dur||'', t.s, t.f, t.pr||'', STATE.floatMap[t.id]||0]);
+  cpTasks.forEach((t,ri) => {
+    const inLng = STATE.longestPath && STATE.longestPath.has(t.id);
+    const inMp  = STATE.mpPath && STATE.mpPath.has(t.id);
+    let pathType = '';
+    if (inLng && inMp) pathType = '工程鏈 + MP鏈';
+    else if (inLng) pathType = '最長工程鏈';
+    else if (inMp)  pathType = 'MP交付鏈';
+    const rowBg = ri%2===0 ? XL.CP_AMBER : XL.WHITE;
+    s2data.push([
+      xlCell(t.id,  { bg:rowBg, color:XL.FONT_ID, align:'center' }),
+      xlCell(t.n,   { bg:rowBg, color:XL.FONT_CP, bold:true }),
+      xlCell(t.dur||'', { bg:rowBg, color:XL.FONT_DIM, align:'center' }),
+      xlCell(t.s,   { bg:rowBg, color:XL.FONT_OK }),
+      xlCell(t.f !== t.s ? t.f : '', { bg:rowBg, color:XL.FONT_OK }),
+      xlCell(pathType, { bg:rowBg, color:XL.FONT_AMBER||'FFFBBF24', bold:true }),
+      xlCell(t.pr||'', { bg:rowBg, color:'FF4A7A9A', sz:8 }),
+    ]);
   });
-  const wsCp = XLSX.utils.aoa_to_sheet(cpRows);
-  wsCp['!cols'] = [{wch:6},{wch:45},{wch:12},{wch:14},{wch:14},{wch:20},{wch:10}];
-  XLSX.utils.book_append_sheet(wb, wsCp, 'Critical Path');
+  const ws2 = XLSX.utils.aoa_to_sheet(s2data.map(r => r.map(c => c.v !== undefined ? c : {v:'',t:'s'})));
+  applyToSheet(ws2, s2data, [{wch:6},{wch:48},{wch:12},{wch:13},{wch:13},{wch:18},{wch:22}]);
+  ws2['!rows'] = s2data.map((_,i) => ({ hpt: i===0 ? 20 : 16 }));
+  XLSX.utils.book_append_sheet(wb, ws2, '⚡ Critical Path');
 
-  // ── Sheet 3: Milestones ──
-  const msRows = [['ID','Milestone','Date','Days from Today','Status','Is Critical Path']];
-  STATE.tasks.filter(t => t.ms).sort((a,b) => a.startDate-b.startDate).forEach(t => {
-    const diff = Math.round((t.startDate - TODAY) / 86400000);
-    const status = diff < 0 ? `${Math.abs(diff)}d ago` : diff === 0 ? 'TODAY' : `in ${diff}d`;
-    msRows.push([t.id, t.n, t.s, diff, status, STATE.cpIds.has(t.id) ? 'Yes' : '']);
+  // ════════════════════════════════════════
+  // SHEET 3: Milestones
+  // ════════════════════════════════════════
+  const msTasks = STATE.tasks.filter(t => t.ms).sort((a,b) => a.startDate - b.startDate);
+  const s3data = [
+    ['ID','Milestone','Date','Days','Status','Path'].map(h => xlHdr(h, XL.HDR_BLUE))
+  ];
+  msTasks.forEach((t,ri) => {
+    const diff   = Math.round((t.startDate - TODAY) / 86400000);
+    const isPast = diff < 0;
+    const isSoon = diff >= 0 && diff <= 14;
+    const status = isPast ? `${Math.abs(diff)}d ago` : diff === 0 ? 'TODAY !' : `in ${diff}d`;
+    const sColor = isPast ? XL.FONT_PAST : isSoon ? XL.FONT_SOON : XL.FONT_OK;
+    const isCp   = STATE.cpIds.has(t.id);
+    const rowBg  = isPast ? 'FF1A0808' : isSoon ? 'FF1A1200' : (ri%2===0 ? XL.MS_BLUE : XL.WHITE);
+    s3data.push([
+      xlCell(t.id,   { bg:rowBg, color:XL.FONT_ID, align:'center' }),
+      xlCell(t.n,    { bg:rowBg, color:XL.FONT_MS, bold:true }),
+      xlCell(t.s,    { bg:rowBg, color:sColor }),
+      xlCell(diff,   { bg:rowBg, color:sColor, align:'center', t:'n' }),
+      xlCell(status, { bg:rowBg, color:sColor, bold:isSoon||isPast, align:'center' }),
+      xlCell(isCp ? '⚡ CP' : '', { bg:rowBg, color:XL.FONT_CP, align:'center', bold:true }),
+    ]);
   });
-  const wsMi = XLSX.utils.aoa_to_sheet(msRows);
-  wsMi['!cols'] = [{wch:6},{wch:45},{wch:14},{wch:14},{wch:12},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, wsMi, 'Milestones');
+  const ws3 = XLSX.utils.aoa_to_sheet(s3data.map(r => r.map(c => c.v !== undefined ? c : {v:'',t:'s'})));
+  applyToSheet(ws3, s3data, [{wch:6},{wch:48},{wch:13},{wch:8},{wch:12},{wch:10}]);
+  ws3['!rows'] = s3data.map((_,i) => ({ hpt: i===0 ? 20 : 16 }));
+  XLSX.utils.book_append_sheet(wb, ws3, '◆ Milestones');
 
-  // ── Sheet 4: Summary ──
-  const today = fmtDate(TODAY);
+  // ════════════════════════════════════════
+  // SHEET 4: Summary
+  // ════════════════════════════════════════
   const lastMs = STATE.tasks.filter(t=>t.ms).sort((a,b)=>b.finishDate-a.finishDate)[0];
-  const summRows = [
-    ['Project Summary',''],
-    ['Generated','today'],
-    ['',''],
-    ['File',document.getElementById('appTitle').textContent],
-    ['Total Tasks',STATE.tasks.length],
-    ['Total Lanes',STATE.lanes.length],
-    ['Project Start',fmtDate(STATE.projectStart)],
-    ['Project End',fmtDate(STATE.projectEnd)],
-    ['',''],
-    ['Critical Path Tasks',STATE.cpIds.size],
-    ['Milestones',STATE.tasks.filter(t=>t.ms).length],
-    ['MP Target',lastMs ? lastMs.s : '—'],
-    ['Days to MP',lastMs ? Math.round((lastMs.finishDate-TODAY)/86400000) : '—'],
+  const mpDays = lastMs ? Math.round((lastMs.finishDate-TODAY)/86400000) : null;
+  const totalDays = Math.round((STATE.projectEnd - STATE.projectStart)/86400000);
+  const elapsed = Math.round((TODAY - STATE.projectStart)/86400000);
+  const pct = Math.max(0,Math.min(100,Math.round(elapsed/totalDays*100)));
+
+  const s4data = [
+    [xlHdr('Project Summary Report', XL.HDR_DARK, {align:'left'}), xlCell('')],
+    [xlCell(''), xlCell('')],
+    [xlCell('Project',   {bold:true, color:XL.FONT_HDR, bg:XL.HDR_DARK}), xlCell(projName, {color:XL.FONT_MS, bold:true})],
+    [xlCell('Generated', {bold:true, color:XL.FONT_DIM}), xlCell(today,  {color:XL.FONT_BODY})],
+    [xlCell(''), xlCell('')],
+    [xlCell('── Schedule ──', {bold:true, color:XL.FONT_DIM, italic:true}), xlCell('')],
+    [xlCell('Project Start',  {color:XL.FONT_DIM}), xlCell(fmtDate(STATE.projectStart), {color:XL.FONT_BODY})],
+    [xlCell('Project End',    {color:XL.FONT_DIM}), xlCell(fmtDate(STATE.projectEnd),   {color:XL.FONT_BODY})],
+    [xlCell('MP Target',      {color:XL.FONT_DIM}), xlCell(lastMs ? lastMs.s : '—',    {color:XL.FONT_MS, bold:true})],
+    [xlCell('Days to MP',     {color:XL.FONT_DIM}), xlCell(mpDays !== null ? (mpDays > 0 ? `${mpDays} days` : 'PAST') : '—', {color: mpDays>30?XL.FONT_OK:mpDays>0?XL.FONT_SOON:XL.FONT_PAST, bold:true})],
+    [xlCell('Progress',       {color:XL.FONT_DIM}), xlCell(`${pct}%  (Day ${elapsed} of ${totalDays})`, {color:XL.FONT_BODY})],
+    [xlCell(''), xlCell('')],
+    [xlCell('── Tasks ──', {bold:true, color:XL.FONT_DIM, italic:true}), xlCell('')],
+    [xlCell('Total Tasks',       {color:XL.FONT_DIM}), xlCell(STATE.tasks.length,                        {color:XL.FONT_BODY, align:'right'})],
+    [xlCell('Milestones',        {color:XL.FONT_DIM}), xlCell(STATE.tasks.filter(t=>t.ms).length,        {color:XL.FONT_MS,   align:'right', bold:true})],
+    [xlCell('Critical Path Tasks',{color:XL.FONT_DIM}),xlCell(STATE.cpIds.size,                          {color:XL.FONT_CP,   align:'right', bold:true})],
+    [xlCell('Lanes',             {color:XL.FONT_DIM}), xlCell(STATE.lanes.length,                        {color:XL.FONT_BODY, align:'right'})],
   ];
-  summRows[1][1] = today;
-  const wsSumm = XLSX.utils.aoa_to_sheet(summRows);
-  wsSumm['!cols'] = [{wch:22},{wch:20}];
-  XLSX.utils.book_append_sheet(wb, wsSumm, 'Summary');
+
+  const ws4 = XLSX.utils.aoa_to_sheet(s4data.map(r => r.map(c => c && c.v !== undefined ? c : {v:'',t:'s'})));
+  // merge title row
+  ws4['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:1} }];
+  applyToSheet(ws4, s4data, [{wch:22},{wch:28}]);
+  ws4['!rows'] = s4data.map((_,i) => ({ hpt: i===0 ? 24 : 16 }));
+  XLSX.utils.book_append_sheet(wb, ws4, '📊 Summary');
 
   // download
-  const fname = (document.getElementById('appTitle').textContent || 'schedule') + '_CPM_' + today.replace(/\//g,'-') + '.xlsx';
-  XLSX.writeFile(wb, fname);
+  const fname = `${projName}_Report_${today.replace(/\//g,'-')}.xlsx`;
+  XLSX.writeFile(wb, fname, { bookType:'xlsx', type:'binary' });
+  log('ok', `匯出：${fname}`);
 }
 
 
