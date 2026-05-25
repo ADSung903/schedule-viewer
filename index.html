@@ -1867,189 +1867,127 @@ function setStyles(ws, styledRows, colWidths, rowHeights) {
 function exportExcel() {
   if (!STATE.tasks.length) { alert('請先上傳 SCH 檔案'); return; }
 
-  const wb = XLSX.utils.book_new();
+  const wb   = XLSX.utils.book_new();
   const today = fmtDate(TODAY);
-  const projName = document.getElementById('appTitle').textContent || 'Schedule';
+  const proj  = document.getElementById('appTitle').textContent || 'Schedule';
 
-  // ════════════════ SHEET 1: Full Schedule ════════════════
-  // Headers with clear markers
-  const s1 = [];
-  s1.push(['ID', 'Task Name', 'Duration', 'Start', 'Finish', 'Predecessors', 'Lane', 'MS', 'CP']);
-  s1.push(['', '', '', '', '', '', '', '', '']);
+  // build id→name lookup for predecessor display
+  const idName = {};
+  STATE.tasks.forEach(t => { idName[String(t.id)] = t.n; });
 
-  // build id→task map for predecessor lookup
-  const idMapEx = {};
-  STATE.tasks.forEach(t => { idMapEx[String(t.id)] = t; });
+  function predStr(t) {
+    if (!t.preds || !t.preds.length) return t.pr || '';
+    return t.preds.filter(p => p.valid !== false).map(p => {
+      const nm = idName[String(p.id)] ? idName[String(p.id)].slice(0,18) : p.id;
+      const tp = p.type || 'FS';
+      const off = p.offsetDays ? (p.offsetDays > 0 ? `+${p.offsetDays}d` : `${p.offsetDays}d`) : '';
+      return `${p.id} ${nm} (${tp}${off})`;
+    }).join(' | ');
+  }
 
-  let lastLane = '';
+  function finVal(t) {
+    return (t.f && t.f !== t.s) ? t.f : '';
+  }
+
+  // ── Sheet 1: Full Schedule ──────────────────
+  const s1 = [['ID','Task Name','Duration','Start','Finish','Predecessors','MS','CP Path']];
   STATE.tasks.forEach(t => {
-    const isCp      = STATE.cpIds.has(t.id);
-    const inLng     = STATE.longestPath && STATE.longestPath.has(t.id);
-    const inMp      = STATE.mpPath && STATE.mpPath.has(t.id);
-    const lane      = STATE.lanes.find(l => l.tasks.some(lt => lt.id === t.id));
-    const laneLabel = lane ? lane.label : '';
-
-    // correct finish: use t.f only if different from t.s, else empty
-    const finishVal = (t.f && t.f !== t.s) ? t.f : '';
-
-    // correct predecessors: show "ID TaskName (type+offset)" format
-    let predStr = '';
-    if (t.preds && t.preds.length > 0) {
-      predStr = t.preds.filter(p => p.valid !== false).map(p => {
-        const pt = idMapEx[String(p.id)];
-        const name = pt ? pt.n.slice(0,20) : p.id;
-        const type = p.type || 'FS';
-        const off  = p.offsetDays ? (p.offsetDays > 0 ? `+${p.offsetDays}d` : `${p.offsetDays}d`) : '';
-        return `[${p.id}]${name} ${type}${off}`;
-      }).join('; ');
-    } else if (t.pr) {
-      predStr = t.pr;
-    }
-
-    // Insert lane separator row when lane changes
-    if (laneLabel && laneLabel !== lastLane) {
-      if (lastLane !== '') s1.push(['', '', '', '', '', '', '', '', '']);
-      s1.push([`▶ ${laneLabel}`, '', '', '', '', '', '', '', '']);
-      lastLane = laneLabel;
-    }
-
-    const indent = '  '.repeat(t.lv);
-    const msFlag = t.ms ? '◆' : '';
-    let cpFlag = '';
-    if (inLng && inMp) cpFlag = '★★ 工程鏈+MP';
-    else if (inLng)    cpFlag = '★ 工程鏈';
-    else if (inMp)     cpFlag = '★ MP鏈';
-
+    const isCp  = STATE.cpIds.has(t.id);
+    const inLng = STATE.longestPath && STATE.longestPath.has(t.id);
+    const inMp  = STATE.mpPath && STATE.mpPath.has(t.id);
+    let cp = '';
+    if (inLng && inMp) cp = 'ENG+MP';
+    else if (inLng)    cp = 'ENG Chain';
+    else if (inMp)     cp = 'MP Chain';
     s1.push([
       t.id,
-      indent + t.n,
+      '  '.repeat(t.lv) + t.n,
       t.dur || '',
       t.s,
-      finishVal,
-      predStr,
-      laneLabel,
-      msFlag,
-      cpFlag
+      finVal(t),
+      predStr(t),
+      t.ms ? 'Yes' : '',
+      cp
     ]);
   });
-
   const ws1 = XLSX.utils.aoa_to_sheet(s1);
-  ws1['!cols'] = [{wch:6},{wch:50},{wch:12},{wch:12},{wch:12},{wch:24},{wch:20},{wch:4},{wch:12}];
-  ws1['!rows'] = s1.map((r,i) => {
-    if (i === 0) return { hpt: 18 };
-    if (r[0] && String(r[0]).startsWith('▶')) return { hpt: 16 };
-    return { hpt: 14 };
+  ws1['!cols'] = [{wch:6},{wch:50},{wch:12},{wch:12},{wch:12},{wch:40},{wch:5},{wch:12}];
+  ws1['!rows'] = [{hpt:18}];
+  ws1['!freeze'] = {xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+  XLSX.utils.book_append_sheet(wb, ws1, 'Schedule');
+
+  // ── Sheet 2: Critical Path ──────────────────
+  const s2 = [['ID','Task Name','Duration','Start','Finish','Path','Predecessors']];
+  STATE.tasks.filter(t => STATE.cpIds.has(t.id)).forEach(t => {
+    const inLng = STATE.longestPath && STATE.longestPath.has(t.id);
+    const inMp  = STATE.mpPath && STATE.mpPath.has(t.id);
+    let cp = inLng && inMp ? 'ENG+MP' : inLng ? 'ENG Chain' : 'MP Chain';
+    s2.push([t.id, t.n, t.dur||'', t.s, finVal(t), cp, predStr(t)]);
   });
-  ws1['!freeze'] = { xSplit: 0, ySplit: 2, topLeftCell: 'A3', activePane: 'bottomLeft', state: 'frozen' };
-  XLSX.utils.book_append_sheet(wb, ws1, '📋 Schedule');
-
-  // ════════════════ SHEET 2: Critical Path ════════════════
-  const s2 = [];
-  s2.push([`${projName} — Critical Path Report`, '', '', '', '', '']);
-  s2.push([`Generated: ${today}   |   CP Tasks: ${STATE.cpIds.size}`, '', '', '', '', '']);
-  s2.push(['', '', '', '', '', '']);
-  s2.push(['▶ 最長工程鏈 (Engineering Chain)', '', '', '', '', '']);
-  s2.push(['ID', 'Task Name', 'Duration', 'Start', 'Finish', 'Predecessors']);
-
-  const lngTasks = STATE.tasks.filter(t => STATE.longestPath && STATE.longestPath.has(t.id));
-  lngTasks.forEach(t => {
-    const cpFinish = (t.f && t.f !== t.s) ? t.f : '';
-    const cpPred = (t.preds||[]).filter(p=>p.valid!==false).map(p=>`[${p.id}]${p.type||'FS'}${p.offsetDays?'+'+p.offsetDays+'d':''}`).join('; ') || t.pr || '';
-    s2.push([t.id, t.n, t.dur||'', t.s, cpFinish, cpPred]);
-  });
-
-  s2.push(['', '', '', '', '', '']);
-  s2.push(['▶ MP 交付鏈 (MP Delivery Chain)', '', '', '', '', '']);
-  s2.push(['ID', 'Task Name', 'Duration', 'Start', 'Finish', 'Predecessors']);
-
-  const mpTasks = STATE.tasks.filter(t => STATE.mpPath && STATE.mpPath.has(t.id));
-  mpTasks.forEach(t => {
-    const cpFinish = (t.f && t.f !== t.s) ? t.f : '';
-    const cpPred = (t.preds||[]).filter(p=>p.valid!==false).map(p=>`[${p.id}]${p.type||'FS'}${p.offsetDays?'+'+p.offsetDays+'d':''}`).join('; ') || t.pr || '';
-    s2.push([t.id, t.n, t.dur||'', t.s, cpFinish, cpPred]);
-  });
-
   const ws2 = XLSX.utils.aoa_to_sheet(s2);
-  ws2['!cols'] = [{wch:6},{wch:50},{wch:12},{wch:12},{wch:12},{wch:24}];
-  ws2['!rows'] = s2.map((_,i) => ({ hpt: i < 3 ? 16 : 14 }));
-  XLSX.utils.book_append_sheet(wb, ws2, '⚡ Critical Path');
+  ws2['!cols'] = [{wch:6},{wch:50},{wch:12},{wch:12},{wch:12},{wch:12},{wch:40}];
+  ws2['!rows'] = [{hpt:18}];
+  ws2['!freeze'] = {xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+  XLSX.utils.book_append_sheet(wb, ws2, 'Critical Path');
 
-  // ════════════════ SHEET 3: Milestones ════════════════
-  const msTasks = STATE.tasks.filter(t => t.ms).sort((a,b) => a.startDate - b.startDate);
-  const s3 = [];
-  s3.push([`${projName} — Milestone Tracker`, '', '', '', '', '']);
-  s3.push([`Today: ${today}   |   Total: ${msTasks.length} milestones`, '', '', '', '', '']);
-  s3.push(['', '', '', '', '', '']);
-  s3.push(['ID', 'Milestone', 'Date', 'Days', 'Status', 'CP']);
-
-  msTasks.forEach(t => {
-    const diff   = Math.round((t.startDate - TODAY) / 86400000);
-    const isPast = diff < 0;
-    const isSoon = diff >= 0 && diff <= 14;
-    const status = isPast
-      ? `⚠ ${Math.abs(diff)}d ago`
-      : diff === 0 ? '★ TODAY'
-      : isSoon ? `! in ${diff}d`
-      : `in ${diff}d`;
-    const cpFlag = STATE.cpIds.has(t.id) ? '⚡' : '';
-    s3.push([t.id, t.n, t.s, diff, status, cpFlag]);
+  // ── Sheet 3: Milestones ─────────────────────
+  const s3 = [['ID','Milestone','Date','Days from Today','Status','CP']];
+  STATE.tasks.filter(t => t.ms)
+    .sort((a,b) => a.startDate - b.startDate)
+    .forEach(t => {
+      const diff   = Math.round((t.startDate - TODAY) / 86400000);
+      const isPast = diff < 0;
+      const isSoon = diff >= 0 && diff <= 14;
+      const status = isPast ? `${Math.abs(diff)}d ago` : diff === 0 ? 'TODAY' : `in ${diff}d`;
+      s3.push([
+        t.id, t.n, t.s, diff, status,
+        STATE.cpIds.has(t.id) ? 'Yes' : ''
+      ]);
   });
-
   const ws3 = XLSX.utils.aoa_to_sheet(s3);
-  ws3['!cols'] = [{wch:6},{wch:50},{wch:12},{wch:7},{wch:12},{wch:5}];
-  ws3['!freeze'] = { xSplit:0, ySplit:4, topLeftCell:'A5', activePane:'bottomLeft', state:'frozen' };
-  XLSX.utils.book_append_sheet(wb, ws3, '◆ Milestones');
+  ws3['!cols'] = [{wch:6},{wch:50},{wch:12},{wch:14},{wch:10},{wch:5}];
+  ws3['!rows'] = [{hpt:18}];
+  ws3['!freeze'] = {xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+  XLSX.utils.book_append_sheet(wb, ws3, 'Milestones');
 
-  // ════════════════ SHEET 4: Summary ════════════════
+  // ── Sheet 4: Summary ────────────────────────
   const lastMs    = STATE.tasks.filter(t=>t.ms).sort((a,b)=>b.finishDate-a.finishDate)[0];
   const mpDays    = lastMs ? Math.round((lastMs.finishDate - TODAY) / 86400000) : null;
   const totalDays = Math.round((STATE.projectEnd - STATE.projectStart) / 86400000);
   const elapsed   = Math.round((TODAY - STATE.projectStart) / 86400000);
   const pct       = Math.max(0, Math.min(100, Math.round(elapsed / totalDays * 100)));
-  const mpStatus  = mpDays === null ? '—' : mpDays > 0 ? `${mpDays} days remaining` : `OVERDUE by ${Math.abs(mpDays)} days`;
+  const upcoming  = STATE.tasks.filter(t=>t.ms && t.startDate>TODAY)
+                      .sort((a,b)=>a.startDate-b.startDate).slice(0,5);
 
   const s4 = [
-    [`PROJECT SUMMARY REPORT`],
-    [projName],
+    ['Project',          proj],
+    ['Generated',        today],
     [''],
-    ['Generated',    today],
+    ['Project Start',    fmtDate(STATE.projectStart)],
+    ['Project End',      fmtDate(STATE.projectEnd)],
+    ['MP Target',        lastMs ? lastMs.s : '—'],
+    ['Days to MP',       mpDays !== null ? mpDays : '—'],
+    ['Progress',         `${pct}% (Day ${elapsed} / ${totalDays})`],
     [''],
-    ['── SCHEDULE ──'],
-    ['Project Start', fmtDate(STATE.projectStart)],
-    ['Project End',   fmtDate(STATE.projectEnd)],
-    ['MP Target',     lastMs ? lastMs.s : '—'],
-    ['MP Status',     mpStatus],
-    ['Progress',      `${pct}%  (Day ${elapsed} of ${totalDays})`],
+    ['Total Tasks',      STATE.tasks.length],
+    ['Milestones',       STATE.tasks.filter(t=>t.ms).length],
+    ['Critical Path',    STATE.cpIds.size],
+    ['Lanes',            STATE.lanes.length],
     [''],
-    ['── TASKS ──'],
-    ['Total Tasks',        STATE.tasks.length],
-    ['Milestones',         STATE.tasks.filter(t=>t.ms).length],
-    ['Critical Path (eng)',STATE.longestPath ? STATE.longestPath.size : 0],
-    ['Critical Path (MP)', STATE.mpPath ? STATE.mpPath.size : 0],
-    ['Lanes',              STATE.lanes.length],
-    [''],
-    ['── NEXT 3 MILESTONES ──'],
+    ['Next Milestones',  ''],
+    ...upcoming.map(t => {
+      const d = Math.round((t.startDate-TODAY)/86400000);
+      return [`  ${t.n}`, `${t.s} (in ${d}d)`];
+    })
   ];
-
-  // Add next 3 upcoming milestones
-  const upcoming = STATE.tasks
-    .filter(t => t.ms && t.startDate > TODAY)
-    .sort((a,b) => a.startDate - b.startDate)
-    .slice(0, 3);
-  upcoming.forEach(t => {
-    const diff = Math.round((t.startDate - TODAY) / 86400000);
-    s4.push([`  ${t.n}`, `${t.s}  (in ${diff}d)`]);
-  });
-
   const ws4 = XLSX.utils.aoa_to_sheet(s4);
-  ws4['!cols'] = [{wch:24},{wch:36}];
-  ws4['!rows'] = s4.map((_,i) => ({ hpt: i===0?20:i===1?16:14 }));
-  XLSX.utils.book_append_sheet(wb, ws4, '📊 Summary');
+  ws4['!cols'] = [{wch:20},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws4, 'Summary');
 
-  const fname = `${projName}_Report_${today.replace(/\//g,'-')}.xlsx`;
-  XLSX.writeFile(wb, fname);
-  log('ok', `匯出：${fname}`);
+  XLSX.writeFile(wb, `${proj}_Report_${today.replace(/\//g,'-')}.xlsx`);
+  log('ok', `匯出完成`);
 }
+
 
 
 // ─────────────────────────────────────────────
