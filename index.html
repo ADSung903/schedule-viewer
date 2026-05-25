@@ -254,6 +254,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
       <button class="btn" id="btnW" onclick="setZoom('week')">WK</button>
       <button class="btn" onclick="toggleAll()">≡</button>
       <button class="btn" id="btnUploadMrd" onclick="openMrdModal()" style="display:none;color:#a78bfa;border-color:#4c1d95">+ MRD</button>
+      <button class="btn" onclick="exportExcel()" style="color:#34d399;border-color:#059669">↓ EXPORT</button>
       <button class="btn danger" onclick="resetApp()">↺ 重新上傳</button>
     </div>
   </div>
@@ -396,6 +397,7 @@ let STATE = {
   showSP: true,
   zoom: 'month',
   barPositions: {},
+  floatMap: {},
   animFrame: null,
   animT: 0
 };
@@ -670,33 +672,156 @@ function buildLanes(tasks) {
   return lanes;
 }
 
+// ─────────────────────────────────────────────
+// TRUE CPM: Forward Pass + Backward Pass
+// ─────────────────────────────────────────────
 function detectCriticalPath(tasks) {
-  // heuristic: find the longest chain from first milestone to last
-  // use task with longest duration chain via predecessors
-  const idMap = {};
-  tasks.forEach(t => idMap[t.id] = t);
+  if (!tasks.length) return new Set();
 
-  // find tasks with no successors (potential end nodes)
-  const successorSet = new Set();
+  const MS = 86400000; // ms per day
+  const idMap = {};
+  tasks.forEach(t => { idMap[t.id] = t; });
+
+  // ── Step 1: build successor map ──
+  const successors = {}; // id → [taskId]
+  tasks.forEach(t => { successors[t.id] = []; });
   tasks.forEach(t => {
-    if (t.pr) {
-      t.pr.split(',').forEach(p => {
-        const pid = p.trim().match(/^(\d+)/);
-        if (pid) successorSet.add(pid[1]);
-      });
-    }
+    (t.preds || []).forEach(p => {
+      if (idMap[p.id]) {
+        if (!successors[p.id]) successors[p.id] = [];
+        successors[p.id].push(t.id);
+      }
+    });
   });
 
-  // simple: mark milestones (ms=true or dur=0) as CP candidates
-  // then trace backwards from last milestone
-  const msTasks = tasks.filter(t => t.ms).sort((a,b) => a.finishDate - b.finishDate);
+  // ── Step 2: Forward Pass — compute ES (earliest start) and EF (earliest finish) ──
+  // ES in days from project start (epoch days)
+  const ES = {}, EF = {};
+  const PS_epoch = Math.floor(tasks.reduce((m,t) => Math.min(m, t.startDate||Infinity), Infinity) / MS);
+
+  // topological sort (Kahn's algorithm)
+  const inDeg = {};
+  tasks.forEach(t => { inDeg[t.id] = 0; });
+  tasks.forEach(t => {
+    (t.preds || []).forEach(p => {
+      if (idMap[p.id]) inDeg[t.id] = (inDeg[t.id]||0) + 1;
+    });
+  });
+
+  const queue = tasks.filter(t => !inDeg[t.id] || inDeg[t.id] === 0).map(t => t.id);
+  const topoOrder = [];
+  const visited = new Set();
+
+  // fallback: if cycle or disconnected, use date order
+  if (!queue.length) {
+    tasks.sort((a,b) => (a.startDate||0)-(b.startDate||0)).forEach(t => topoOrder.push(t.id));
+  } else {
+    while (queue.length) {
+      const id = queue.shift();
+      if (visited.has(id)) continue;
+      visited.add(id);
+      topoOrder.push(id);
+      (successors[id]||[]).forEach(sid => {
+        inDeg[sid]--;
+        if (inDeg[sid] <= 0 && !visited.has(sid)) queue.push(sid);
+      });
+    }
+    // add any remaining (cycle members)
+    tasks.forEach(t => { if (!visited.has(t.id)) topoOrder.push(t.id); });
+  }
+
+  // forward pass
+  topoOrder.forEach(id => {
+    const t = idMap[id];
+    if (!t) return;
+    const dur = Math.max(t.durDays || 1, 0);
+
+    // ES = max of all predecessor EF + lag
+    let es = t.startDate ? Math.floor(t.startDate / MS) - PS_epoch : 0;
+
+    (t.preds || []).forEach(p => {
+      const pred = idMap[p.id];
+      if (!pred) return;
+      const predEF = EF[p.id] !== undefined ? EF[p.id] : (Math.floor((pred.finishDate||pred.startDate||0)/MS) - PS_epoch);
+      const predES = ES[p.id] !== undefined ? ES[p.id] : (Math.floor((pred.startDate||0)/MS) - PS_epoch);
+
+      let constraint;
+      switch((p.type||'FS').toUpperCase()) {
+        case 'FS': constraint = predEF + (p.offsetDays||0); break;
+        case 'SS': constraint = predES + (p.offsetDays||0); break;
+        case 'FF': constraint = predEF + (p.offsetDays||0) - dur; break;
+        case 'SF': constraint = predES + (p.offsetDays||0) - dur; break;
+        default:   constraint = predEF + (p.offsetDays||0);
+      }
+      if (constraint > es) es = constraint;
+    });
+
+    ES[id] = es;
+    EF[id] = es + dur;
+  });
+
+  // ── Step 3: Backward Pass — compute LS and LF ──
+  const LS = {}, LF = {};
+  const projectEnd = Math.max(...Object.values(EF));
+
+  // init all tasks to project end
+  tasks.forEach(t => {
+    LF[t.id] = projectEnd;
+    LS[t.id] = projectEnd - Math.max(t.durDays||1, 0);
+  });
+
+  // process in reverse topo order
+  [...topoOrder].reverse().forEach(id => {
+    const t = idMap[id];
+    if (!t) return;
+    const dur = Math.max(t.durDays||1, 0);
+
+    // LF = min of all successor LS - lag
+    (successors[id]||[]).forEach(sid => {
+      const succ = idMap[sid];
+      if (!succ) return;
+      const succLS = LS[sid] !== undefined ? LS[sid] : (LF[sid] - Math.max(succ.durDays||1,0));
+      const succLF = LF[sid] !== undefined ? LF[sid] : projectEnd;
+
+      let constraint;
+      const pred = (succ.preds||[]).find(p => String(p.id) === String(id));
+      const ptype = pred ? (pred.type||'FS').toUpperCase() : 'FS';
+      const poffset = pred ? (pred.offsetDays||0) : 0;
+
+      switch(ptype) {
+        case 'FS': constraint = succLS - poffset; break;
+        case 'SS': constraint = succLS - poffset + Math.max(succ.durDays||1,0); break;
+        case 'FF': constraint = succLF - poffset; break;
+        case 'SF': constraint = succLF - poffset + Math.max(succ.durDays||1,0); break;
+        default:   constraint = succLS - poffset;
+      }
+      if (constraint < LF[id]) LF[id] = constraint;
+    });
+
+    LS[id] = LF[id] - dur;
+  });
+
+  // ── Step 4: Float = LS - ES; CP = Float <= 0 ──
   const cpSet = new Set();
-  msTasks.forEach(t => cpSet.add(t.id));
+  const floatMap = {};
+  tasks.forEach(t => {
+    const es = ES[t.id] !== undefined ? ES[t.id] : 0;
+    const ls = LS[t.id] !== undefined ? LS[t.id] : 0;
+    const f = ls - es;
+    floatMap[t.id] = f;
+    t.totalFloat = f; // store on task for tooltip
+    if (f <= 0) cpSet.add(t.id);
+  });
 
-  // also add long-duration tasks as CP
-  const sorted = [...tasks].sort((a,b) => b.durDays - a.durDays);
-  sorted.slice(0, Math.ceil(tasks.length * 0.3)).forEach(t => cpSet.add(t.id));
+  // store float map for debug
+  STATE.floatMap = floatMap;
 
+  // safety: if CPM yields 0 CP tasks (all disconnected), fall back to milestone chain
+  if (cpSet.size === 0) {
+    tasks.filter(t => t.ms).forEach(t => cpSet.add(t.id));
+  }
+
+  log('ok', `CPM 完成：${cpSet.size} 個關鍵路徑任務，Float=0`);
   return cpSet;
 }
 
@@ -822,6 +947,15 @@ function render() {
   if (STATE.animFrame) { cancelAnimationFrame(STATE.animFrame); STATE.animFrame = null; }
   STATE.barPositions = {};
   const gc = document.getElementById('gc');
+
+  // scale container width based on zoom: week view needs more pixels per day
+  const totalDays = Math.round((STATE.projectEnd - STATE.projectStart) / 86400000);
+  const minW = STATE.zoom === 'week'
+    ? Math.max(1400, totalDays * 8)   // ~8px per day in week view
+    : Math.max(1000, totalDays * 3);  // ~3px per day in month view
+  gc.style.minWidth = minW + 'px';
+  document.getElementById('gi').style.minWidth = minW + 'px';
+
   const ms = getMarkers();
   const todayP = pct(TODAY);
   let h = ''; let rowY = 28;
@@ -896,17 +1030,47 @@ function drawConnections() {
   canvas.style.width = gc.scrollWidth + 'px'; canvas.style.height = gc.scrollHeight + 'px';
   if (!STATE.showCP) { canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height); return; }
 
-  // sort CP nodes by x position (chronological)
-  const pts = Object.values(STATE.barPositions).sort((a,b) => a.x - b.x);
-  if (pts.length < 2) return;
+  // Build segments following actual predecessor chain within CP tasks
+  const cpTasks = STATE.tasks.filter(t => STATE.cpIds.has(t.id) && STATE.barPositions[t.id]);
+  // Sort by ES (earliest start) using floatMap reference, fallback to x position
+  cpTasks.sort((a,b) => {
+    const aPos = STATE.barPositions[a.id];
+    const bPos = STATE.barPositions[b.id];
+    return (aPos ? aPos.x : 0) - (bPos ? bPos.x : 0);
+  });
 
-  const segs = []; const segLens = []; let totalLen = 0;
-  for (let i = 0; i < pts.length-1; i++) {
-    const a = pts[i], b = pts[i+1];
-    const l = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
-    segs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y });
-    segLens.push(l); totalLen += l;
+  // Build edges: connect predecessor → successor within CP set
+  const cpIdSet = new Set(cpTasks.map(t => String(t.id)));
+  const edges = [];
+  cpTasks.forEach(t => {
+    (t.preds || []).forEach(p => {
+      if (cpIdSet.has(String(p.id)) && STATE.barPositions[p.id] && STATE.barPositions[t.id]) {
+        edges.push({ from: p.id, to: t.id });
+      }
+    });
+  });
+
+  // If no predecessor edges found among CP tasks, fall back to sequential by position
+  let segs = [];
+  if (edges.length > 0) {
+    edges.forEach(e => {
+      const a = STATE.barPositions[e.from];
+      const b = STATE.barPositions[e.to];
+      if (a && b) segs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y });
+    });
+  } else {
+    // fallback: connect sequentially sorted by x
+    const pts = cpTasks.map(t => STATE.barPositions[t.id]).filter(Boolean);
+    for (let i = 0; i < pts.length-1; i++) {
+      segs.push({ ax: pts[i].x, ay: pts[i].y, bx: pts[i+1].x, by: pts[i+1].y });
+    }
   }
+
+  if (segs.length === 0) return;
+
+  const segLens = segs.map(s => Math.abs(s.bx-s.ax) + Math.abs(s.by-s.ay));
+  let totalLen = segLens.reduce((a,b) => a+b, 0);
+  if (totalLen === 0) return;
 
   STATE.animT = 0;
   function draw() {
@@ -1084,7 +1248,18 @@ function showTT(id) {
   document.getElementById('ttd').textContent = `📅 ${task.s}${task.f && task.f !== task.s ? ' → '+task.f : ''}`;
   document.getElementById('ttdu').textContent = task.dur ? `⏱ ${task.dur}` : '';
   document.getElementById('ttp').textContent = task.pr ? `🔗 ${task.pr}` : '';
-  document.getElementById('ttcp').textContent = isCp && STATE.showCP ? '⚡ CRITICAL PATH' : '';
+  const floatVal = STATE.floatMap && STATE.floatMap[task.id] !== undefined ? STATE.floatMap[task.id] : null;
+  let floatStr = '';
+  if (floatVal !== null) {
+    if (floatVal <= 0) {
+      floatStr = '⚡ 關鍵路徑 — 此任務延誤會直接影響 MP';
+    } else if (floatVal <= 5) {
+      floatStr = `⚠ 緩衝僅 ${floatVal} 天 — 接近關鍵路徑`;
+    } else {
+      floatStr = `✓ 緩衝 ${floatVal} 天 — 可延遲此天數而不影響 MP`;
+    }
+  }
+  document.getElementById('ttcp').textContent = STATE.showCP ? floatStr : '';
   document.getElementById('tt').style.display = 'block';
 }
 function hideTT() { document.getElementById('tt').style.display = 'none'; }
@@ -1431,6 +1606,90 @@ function promptMrdUpload() {
     if (!STATE.tasks.length) return;
     openMrdModal();
   }, 600);
+}
+
+
+// ─────────────────────────────────────────────
+// EXCEL EXPORT
+// ─────────────────────────────────────────────
+function exportExcel() {
+  if (!STATE.tasks.length) { alert('請先上傳 SCH 檔案'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Schedule with CP & Float ──
+  const schRows = [['ID','Task Name','Level','Duration','Start','Finish','Predecessors','Is Milestone','Is Critical Path','Float (days)','Lane']];
+  STATE.tasks.forEach(t => {
+    const isCp = STATE.cpIds.has(t.id);
+    const floatVal = STATE.floatMap[t.id] !== undefined ? STATE.floatMap[t.id] : '';
+    const lane = STATE.lanes.find(l => l.tasks.some(lt => lt.id === t.id));
+    schRows.push([
+      t.id,
+      '  '.repeat(t.lv) + t.n,
+      t.lv,
+      t.dur || '',
+      t.s,
+      t.f !== t.s ? t.f : '',
+      t.pr || '',
+      t.ms ? 'Yes' : '',
+      isCp ? 'Yes' : '',
+      floatVal,
+      lane ? lane.label : ''
+    ]);
+  });
+  const wsSchd = XLSX.utils.aoa_to_sheet(schRows);
+  // column widths
+  wsSchd['!cols'] = [
+    {wch:6},{wch:45},{wch:6},{wch:12},{wch:14},{wch:14},{wch:20},{wch:10},{wch:14},{wch:12},{wch:18}
+  ];
+  XLSX.utils.book_append_sheet(wb, wsSchd, 'Schedule');
+
+  // ── Sheet 2: Critical Path only ──
+  const cpRows = [['ID','Task Name','Duration','Start','Finish','Predecessors','Float']];
+  STATE.tasks.filter(t => STATE.cpIds.has(t.id)).forEach(t => {
+    cpRows.push([t.id, t.n, t.dur||'', t.s, t.f, t.pr||'', STATE.floatMap[t.id]||0]);
+  });
+  const wsCp = XLSX.utils.aoa_to_sheet(cpRows);
+  wsCp['!cols'] = [{wch:6},{wch:45},{wch:12},{wch:14},{wch:14},{wch:20},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, wsCp, 'Critical Path');
+
+  // ── Sheet 3: Milestones ──
+  const msRows = [['ID','Milestone','Date','Days from Today','Status','Is Critical Path']];
+  STATE.tasks.filter(t => t.ms).sort((a,b) => a.startDate-b.startDate).forEach(t => {
+    const diff = Math.round((t.startDate - TODAY) / 86400000);
+    const status = diff < 0 ? `${Math.abs(diff)}d ago` : diff === 0 ? 'TODAY' : `in ${diff}d`;
+    msRows.push([t.id, t.n, t.s, diff, status, STATE.cpIds.has(t.id) ? 'Yes' : '']);
+  });
+  const wsMi = XLSX.utils.aoa_to_sheet(msRows);
+  wsMi['!cols'] = [{wch:6},{wch:45},{wch:14},{wch:14},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsMi, 'Milestones');
+
+  // ── Sheet 4: Summary ──
+  const today = fmtDate(TODAY);
+  const lastMs = STATE.tasks.filter(t=>t.ms).sort((a,b)=>b.finishDate-a.finishDate)[0];
+  const summRows = [
+    ['Project Summary',''],
+    ['Generated','today'],
+    ['',''],
+    ['File',document.getElementById('appTitle').textContent],
+    ['Total Tasks',STATE.tasks.length],
+    ['Total Lanes',STATE.lanes.length],
+    ['Project Start',fmtDate(STATE.projectStart)],
+    ['Project End',fmtDate(STATE.projectEnd)],
+    ['',''],
+    ['Critical Path Tasks',STATE.cpIds.size],
+    ['Milestones',STATE.tasks.filter(t=>t.ms).length],
+    ['MP Target',lastMs ? lastMs.s : '—'],
+    ['Days to MP',lastMs ? Math.round((lastMs.finishDate-TODAY)/86400000) : '—'],
+  ];
+  summRows[1][1] = today;
+  const wsSumm = XLSX.utils.aoa_to_sheet(summRows);
+  wsSumm['!cols'] = [{wch:22},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsSumm, 'Summary');
+
+  // download
+  const fname = (document.getElementById('appTitle').textContent || 'schedule') + '_CPM_' + today.replace(/\//g,'-') + '.xlsx';
+  XLSX.writeFile(wb, fname);
 }
 
 </script>
