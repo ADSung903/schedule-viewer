@@ -292,7 +292,8 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
       </div>
     </div>
     <div class="legend">
-      <div class="li" style="color:#fbbf24"><div class="ld" style="background:#f59e0b;box-shadow:0 0 4px #f59e0b"></div>CRITICAL PATH</div>
+      <div class="li" style="color:#fbbf24"><div class="ld" style="background:#f59e0b;box-shadow:0 0 4px #f59e0b"></div>最長工程鏈</div>
+      <div class="li" style="color:#38bdf8"><div class="ld" style="background:#38bdf8;box-shadow:0 0 4px #38bdf8"></div>MP交付鏈</div>
       <div class="li"><div class="ld" style="background:#0ea5e9;opacity:0.5"></div>主流程</div>
       <div class="li"><div class="ld" style="background:#10b981;opacity:0.5"></div>面板</div>
       <div class="li"><div class="ld" style="background:#ef4444;opacity:0.5"></div>認證</div>
@@ -398,6 +399,9 @@ let STATE = {
   zoom: 'month',
   barPositions: {},
   floatMap: {},
+  longestPath: new Set(),
+  mpPath: new Set(),
+  distMap: {},
   animFrame: null,
   animT: 0
 };
@@ -673,17 +677,16 @@ function buildLanes(tasks) {
 }
 
 // ─────────────────────────────────────────────
-// TRUE CPM: Forward Pass + Backward Pass
+// LONGEST PATH (Direction B)
 // ─────────────────────────────────────────────
 function detectCriticalPath(tasks) {
   if (!tasks.length) return new Set();
 
-  const MS = 86400000; // ms per day
   const idMap = {};
   tasks.forEach(t => { idMap[t.id] = t; });
 
-  // ── Step 1: build successor map ──
-  const successors = {}; // id → [taskId]
+  // Build successor map
+  const successors = {};
   tasks.forEach(t => { successors[t.id] = []; });
   tasks.forEach(t => {
     (t.preds || []).forEach(p => {
@@ -694,134 +697,73 @@ function detectCriticalPath(tasks) {
     });
   });
 
-  // ── Step 2: Forward Pass — compute ES (earliest start) and EF (earliest finish) ──
-  // ES in days from project start (epoch days)
-  const ES = {}, EF = {};
-  const PS_epoch = Math.floor(tasks.reduce((m,t) => Math.min(m, t.startDate||Infinity), Infinity) / MS);
-
-  // topological sort (Kahn's algorithm)
+  // Topological sort (Kahn)
   const inDeg = {};
-  tasks.forEach(t => { inDeg[t.id] = 0; });
   tasks.forEach(t => {
-    (t.preds || []).forEach(p => {
-      if (idMap[p.id]) inDeg[t.id] = (inDeg[t.id]||0) + 1;
+    inDeg[t.id] = (t.preds||[]).filter(p => idMap[p.id]).length;
+  });
+  const queue = tasks.filter(t => !inDeg[t.id]).map(t => t.id);
+  const topo = []; const visited = new Set();
+  while (queue.length) {
+    const nid = queue.shift();
+    if (visited.has(nid)) continue;
+    visited.add(nid); topo.push(nid);
+    (successors[nid]||[]).forEach(sid => {
+      inDeg[sid]--;
+      if (inDeg[sid] <= 0 && !visited.has(sid)) queue.push(sid);
     });
+  }
+  tasks.forEach(t => { if (!visited.has(t.id)) topo.push(t.id); });
+
+  // ── Longest path by Duration accumulation ──
+  // dist[id] = max cumulative duration to reach END of this task
+  const dist = {}, prevMap = {};
+  topo.forEach(tid => {
+    const t = idMap[tid];
+    if (!t) return;
+    const dur = Math.max(t.durDays || 1, 1);
+    let best = dur, bestFrom = null;
+    (t.preds || []).forEach(p => {
+      if (!idMap[p.id]) return;
+      const predDist = dist[p.id] !== undefined ? dist[p.id] : Math.max(idMap[p.id].durDays||1,1);
+      const candidate = predDist + dur + Math.max(0, p.offsetDays||0);
+      if (candidate > best) { best = candidate; bestFrom = p.id; }
+    });
+    dist[tid] = best;
+    prevMap[tid] = bestFrom;
   });
 
-  const queue = tasks.filter(t => !inDeg[t.id] || inDeg[t.id] === 0).map(t => t.id);
-  const topoOrder = [];
-  const visited = new Set();
-
-  // fallback: if cycle or disconnected, use date order
-  if (!queue.length) {
-    tasks.sort((a,b) => (a.startDate||0)-(b.startDate||0)).forEach(t => topoOrder.push(t.id));
-  } else {
-    while (queue.length) {
-      const id = queue.shift();
-      if (visited.has(id)) continue;
-      visited.add(id);
-      topoOrder.push(id);
-      (successors[id]||[]).forEach(sid => {
-        inDeg[sid]--;
-        if (inDeg[sid] <= 0 && !visited.has(sid)) queue.push(sid);
-      });
-    }
-    // add any remaining (cycle members)
-    tasks.forEach(t => { if (!visited.has(t.id)) topoOrder.push(t.id); });
+  // Trace path from a specific end node
+  function tracePath(endId) {
+    const path = [];
+    let cur = endId;
+    while (cur) { path.push(cur); cur = prevMap[cur]; }
+    path.reverse();
+    return path;
   }
 
-  // forward pass
-  topoOrder.forEach(id => {
-    const t = idMap[id];
-    if (!t) return;
-    const dur = Math.max(t.durDays || 1, 0);
+  // ── Path 1: Longest overall duration chain ──
+  const endByDist = tasks.reduce((best, t) =>
+    (dist[t.id]||0) > (dist[best]||0) ? t.id : best, tasks[0].id);
+  const longestPath = new Set(tracePath(endByDist));
 
-    // ES = max of all predecessor EF + lag
-    let es = t.startDate ? Math.floor(t.startDate / MS) - PS_epoch : 0;
+  // ── Path 2: Chain leading to MP (last milestone by date) ──
+  const milestones = tasks.filter(t => t.ms).sort((a,b) => b.finishDate - a.finishDate);
+  const mpTask = milestones[0];
+  const mpPath = mpTask ? new Set(tracePath(mpTask.id)) : new Set();
 
-    (t.preds || []).forEach(p => {
-      const pred = idMap[p.id];
-      if (!pred) return;
-      const predEF = EF[p.id] !== undefined ? EF[p.id] : (Math.floor((pred.finishDate||pred.startDate||0)/MS) - PS_epoch);
-      const predES = ES[p.id] !== undefined ? ES[p.id] : (Math.floor((pred.startDate||0)/MS) - PS_epoch);
+  // Union of both paths = CP
+  const cpSet = new Set([...longestPath, ...mpPath]);
 
-      let constraint;
-      switch((p.type||'FS').toUpperCase()) {
-        case 'FS': constraint = predEF + (p.offsetDays||0); break;
-        case 'SS': constraint = predES + (p.offsetDays||0); break;
-        case 'FF': constraint = predEF + (p.offsetDays||0) - dur; break;
-        case 'SF': constraint = predES + (p.offsetDays||0) - dur; break;
-        default:   constraint = predEF + (p.offsetDays||0);
-      }
-      if (constraint > es) es = constraint;
-    });
+  // Store separately for coloring
+  STATE.longestPath = longestPath;
+  STATE.mpPath = mpPath;
+  STATE.distMap = dist;
 
-    ES[id] = es;
-    EF[id] = es + dur;
-  });
+  log('ok', `最長路徑：${longestPath.size} tasks (${dist[endByDist]}天)`);
+  log('ok', `MP路徑：${mpPath.size} tasks`);
+  log('ok', `關鍵路徑合計：${cpSet.size} tasks`);
 
-  // ── Step 3: Backward Pass — compute LS and LF ──
-  const LS = {}, LF = {};
-  const projectEnd = Math.max(...Object.values(EF));
-
-  // init all tasks to project end
-  tasks.forEach(t => {
-    LF[t.id] = projectEnd;
-    LS[t.id] = projectEnd - Math.max(t.durDays||1, 0);
-  });
-
-  // process in reverse topo order
-  [...topoOrder].reverse().forEach(id => {
-    const t = idMap[id];
-    if (!t) return;
-    const dur = Math.max(t.durDays||1, 0);
-
-    // LF = min of all successor LS - lag
-    (successors[id]||[]).forEach(sid => {
-      const succ = idMap[sid];
-      if (!succ) return;
-      const succLS = LS[sid] !== undefined ? LS[sid] : (LF[sid] - Math.max(succ.durDays||1,0));
-      const succLF = LF[sid] !== undefined ? LF[sid] : projectEnd;
-
-      let constraint;
-      const pred = (succ.preds||[]).find(p => String(p.id) === String(id));
-      const ptype = pred ? (pred.type||'FS').toUpperCase() : 'FS';
-      const poffset = pred ? (pred.offsetDays||0) : 0;
-
-      switch(ptype) {
-        case 'FS': constraint = succLS - poffset; break;
-        case 'SS': constraint = succLS - poffset + Math.max(succ.durDays||1,0); break;
-        case 'FF': constraint = succLF - poffset; break;
-        case 'SF': constraint = succLF - poffset + Math.max(succ.durDays||1,0); break;
-        default:   constraint = succLS - poffset;
-      }
-      if (constraint < LF[id]) LF[id] = constraint;
-    });
-
-    LS[id] = LF[id] - dur;
-  });
-
-  // ── Step 4: Float = LS - ES; CP = Float <= 0 ──
-  const cpSet = new Set();
-  const floatMap = {};
-  tasks.forEach(t => {
-    const es = ES[t.id] !== undefined ? ES[t.id] : 0;
-    const ls = LS[t.id] !== undefined ? LS[t.id] : 0;
-    const f = ls - es;
-    floatMap[t.id] = f;
-    t.totalFloat = f; // store on task for tooltip
-    if (f <= 0) cpSet.add(t.id);
-  });
-
-  // store float map for debug
-  STATE.floatMap = floatMap;
-
-  // safety: if CPM yields 0 CP tasks (all disconnected), fall back to milestone chain
-  if (cpSet.size === 0) {
-    tasks.filter(t => t.ms).forEach(t => cpSet.add(t.id));
-  }
-
-  log('ok', `CPM 完成：${cpSet.size} 個關鍵路徑任務，Float=0`);
   return cpSet;
 }
 
@@ -1030,47 +972,49 @@ function drawConnections() {
   canvas.style.width = gc.scrollWidth + 'px'; canvas.style.height = gc.scrollHeight + 'px';
   if (!STATE.showCP) { canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height); return; }
 
-  // Build segments following actual predecessor chain within CP tasks
-  const cpTasks = STATE.tasks.filter(t => STATE.cpIds.has(t.id) && STATE.barPositions[t.id]);
-  // Sort by ES (earliest start) using floatMap reference, fallback to x position
-  cpTasks.sort((a,b) => {
-    const aPos = STATE.barPositions[a.id];
-    const bPos = STATE.barPositions[b.id];
-    return (aPos ? aPos.x : 0) - (bPos ? bPos.x : 0);
-  });
-
-  // Build edges: connect predecessor → successor within CP set
-  const cpIdSet = new Set(cpTasks.map(t => String(t.id)));
-  const edges = [];
-  cpTasks.forEach(t => {
-    (t.preds || []).forEach(p => {
-      if (cpIdSet.has(String(p.id)) && STATE.barPositions[p.id] && STATE.barPositions[t.id]) {
-        edges.push({ from: p.id, to: t.id });
+  // Build edges for BOTH paths: longest duration chain + MP delivery chain
+  function buildPathSegs(pathSet, color) {
+    if (!pathSet || pathSet.size === 0) return { segs:[], segLens:[], totalLen:0, color };
+    const pathTasks = STATE.tasks.filter(t => pathSet.has(t.id) && STATE.barPositions[t.id]);
+    pathTasks.sort((a,b) => (STATE.barPositions[a.id]?.x||0) - (STATE.barPositions[b.id]?.x||0));
+    const pathIdSet = new Set(pathTasks.map(t => String(t.id)));
+    const edges = [];
+    pathTasks.forEach(t => {
+      (t.preds||[]).forEach(p => {
+        if (pathIdSet.has(String(p.id)) && STATE.barPositions[p.id] && STATE.barPositions[t.id]) {
+          edges.push({ from: p.id, to: t.id });
+        }
+      });
+    });
+    // fallback to sequential if no edges
+    const segs = [];
+    if (edges.length > 0) {
+      edges.forEach(e => {
+        const a = STATE.barPositions[e.from], b = STATE.barPositions[e.to];
+        if (a && b) segs.push({ ax:a.x, ay:a.y, bx:b.x, by:b.y });
+      });
+    } else {
+      for (let i = 0; i < pathTasks.length-1; i++) {
+        const a = STATE.barPositions[pathTasks[i].id];
+        const b = STATE.barPositions[pathTasks[i+1].id];
+        if (a && b) segs.push({ ax:a.x, ay:a.y, bx:b.x, by:b.y });
       }
-    });
-  });
-
-  // If no predecessor edges found among CP tasks, fall back to sequential by position
-  let segs = [];
-  if (edges.length > 0) {
-    edges.forEach(e => {
-      const a = STATE.barPositions[e.from];
-      const b = STATE.barPositions[e.to];
-      if (a && b) segs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y });
-    });
-  } else {
-    // fallback: connect sequentially sorted by x
-    const pts = cpTasks.map(t => STATE.barPositions[t.id]).filter(Boolean);
-    for (let i = 0; i < pts.length-1; i++) {
-      segs.push({ ax: pts[i].x, ay: pts[i].y, bx: pts[i+1].x, by: pts[i+1].y });
     }
+    const segLens = segs.map(s => Math.abs(s.bx-s.ax)+Math.abs(s.by-s.ay));
+    const totalLen = segLens.reduce((a,b)=>a+b,0);
+    return { segs, segLens, totalLen, color };
   }
 
-  if (segs.length === 0) return;
+  const path1 = buildPathSegs(STATE.longestPath, '#f59e0b'); // amber: longest chain
+  const path2 = buildPathSegs(STATE.mpPath, '#38bdf8');       // blue: MP chain
+  const paths = [path1, path2].filter(p => p.segs.length > 0 && p.totalLen > 0);
+  if (paths.length === 0) return;
 
-  const segLens = segs.map(s => Math.abs(s.bx-s.ax) + Math.abs(s.by-s.ay));
-  let totalLen = segLens.reduce((a,b) => a+b, 0);
-  if (totalLen === 0) return;
+  // use combined totalLen for animation timing
+  const maxLen = Math.max(...paths.map(p => p.totalLen));
+  const segs = path1.segs; // keep segs variable for compat
+  const segLens = path1.segLens;
+  let totalLen = maxLen;
 
   STATE.animT = 0;
   function draw() {
@@ -1079,43 +1023,49 @@ function drawConnections() {
     STATE.animT = (STATE.animT + 4.5) % (totalLen + 80);
     const progress = Math.min(STATE.animT, totalLen);
 
-    // static dim path
-    ctx.save(); ctx.globalAlpha = 0.15; ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5; ctx.setLineDash([4,5]);
-    segs.forEach(s => { ctx.beginPath(); ctx.moveTo(s.ax,s.ay); ctx.lineTo(s.bx,s.ay); ctx.lineTo(s.bx,s.by); ctx.stroke(); });
-    ctx.restore();
+    // draw each path
+    paths.forEach(pathDef => {
+      const { segs: pSegs, segLens: pLens, totalLen: pLen, color } = pathDef;
+      const hexToRgb = hex => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `${r},${g},${b}`; };
+      const rgb = hexToRgb(color);
 
-    // animated bright
-    let drawn = 0; ctx.save(); ctx.setLineDash([]);
-    segs.forEach((s,si) => {
-      const sl = segLens[si];
-      if (drawn >= progress) return;
-      const dt = Math.min(sl, progress - drawn);
-      const hL = Math.abs(s.bx - s.ax);
-      const dH = s.bx >= s.ax ? 1 : -1, dV = s.by >= s.ay ? 1 : -1;
-      let ex, ey;
-      if (dt <= hL) { ex = s.ax + dH*dt; ey = s.ay; }
-      else { ex = s.bx; ey = s.ay + dV*(dt - hL); }
-      const draw3 = (w,col,alpha) => {
-        ctx.beginPath(); ctx.strokeStyle=col; ctx.lineWidth=w; ctx.globalAlpha=alpha;
-        ctx.moveTo(s.ax,s.ay);
-        if(dt<=hL) ctx.lineTo(ex,ey);
-        else { ctx.lineTo(s.bx,s.ay); ctx.lineTo(ex,ey); }
-        ctx.stroke();
-      };
-      draw3(10,'rgba(245,158,11,1)',0.08);
-      draw3(3,'rgba(245,158,11,1)',0.5);
-      draw3(1,'rgba(251,191,36,1)',0.95);
-      ctx.globalAlpha = 1;
-      if (dt < sl) {
-        ctx.beginPath(); ctx.arc(ex,ey,4,0,Math.PI*2); ctx.fillStyle='#fbbf24'; ctx.fill();
-        ctx.beginPath(); ctx.arc(ex,ey,9,0,Math.PI*2); ctx.fillStyle='rgba(251,191,36,0.12)'; ctx.fill();
-      }
-      if (dt > hL && hL > 2) {
-        ctx.beginPath(); ctx.arc(s.bx,s.ay,2.5,0,Math.PI*2); ctx.fillStyle='rgba(251,191,36,0.7)'; ctx.fill();
-      }
-      drawn += dt;
+      // static dim path
+      ctx.save(); ctx.globalAlpha = 0.12; ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4,5]);
+      pSegs.forEach(s => { ctx.beginPath(); ctx.moveTo(s.ax,s.ay); ctx.lineTo(s.bx,s.ay); ctx.lineTo(s.bx,s.by); ctx.stroke(); });
+      ctx.restore();
+
+      // animated bright — independent progress per path
+      const pathProgress = Math.min(STATE.animT % (pLen + 80), pLen);
+      let drawn = 0; ctx.save(); ctx.setLineDash([]);
+      pSegs.forEach((s,si) => {
+        const sl = pLens[si];
+        if (drawn >= pathProgress) return;
+        const dt = Math.min(sl, pathProgress - drawn);
+        const hL = Math.abs(s.bx-s.ax);
+        const dH = s.bx>=s.ax?1:-1, dV = s.by>=s.ay?1:-1;
+        let ex,ey;
+        if (dt<=hL){ex=s.ax+dH*dt;ey=s.ay;}
+        else{ex=s.bx;ey=s.ay+dV*(dt-hL);}
+        const draw3=(w,a)=>{
+          ctx.beginPath();ctx.strokeStyle=`rgba(${rgb},1)`;ctx.lineWidth=w;ctx.globalAlpha=a;
+          ctx.moveTo(s.ax,s.ay);
+          if(dt<=hL)ctx.lineTo(ex,ey);
+          else{ctx.lineTo(s.bx,s.ay);ctx.lineTo(ex,ey);}
+          ctx.stroke();
+        };
+        draw3(10,0.08); draw3(3,0.5); draw3(1,0.95);
+        ctx.globalAlpha=1;
+        if(dt<sl){
+          ctx.beginPath();ctx.arc(ex,ey,4,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+          ctx.beginPath();ctx.arc(ex,ey,9,0,Math.PI*2);ctx.fillStyle=`rgba(${rgb},0.15)`;ctx.fill();
+        }
+        if(dt>hL&&hL>2){
+          ctx.beginPath();ctx.arc(s.bx,s.ay,2.5,0,Math.PI*2);ctx.fillStyle=`rgba(${rgb},0.7)`;ctx.fill();
+        }
+        drawn+=dt;
+      });
+      ctx.restore();
     });
-    ctx.restore();
     STATE.animFrame = requestAnimationFrame(draw);
   }
   draw();
@@ -1248,18 +1198,16 @@ function showTT(id) {
   document.getElementById('ttd').textContent = `📅 ${task.s}${task.f && task.f !== task.s ? ' → '+task.f : ''}`;
   document.getElementById('ttdu').textContent = task.dur ? `⏱ ${task.dur}` : '';
   document.getElementById('ttp').textContent = task.pr ? `🔗 ${task.pr}` : '';
-  const floatVal = STATE.floatMap && STATE.floatMap[task.id] !== undefined ? STATE.floatMap[task.id] : null;
-  let floatStr = '';
-  if (floatVal !== null) {
-    if (floatVal <= 0) {
-      floatStr = '⚡ 關鍵路徑 — 此任務延誤會直接影響 MP';
-    } else if (floatVal <= 5) {
-      floatStr = `⚠ 緩衝僅 ${floatVal} 天 — 接近關鍵路徑`;
-    } else {
-      floatStr = `✓ 緩衝 ${floatVal} 天 — 可延遲此天數而不影響 MP`;
-    }
+  let cpStr = '';
+  if (STATE.showCP) {
+    const inLongest = STATE.longestPath && STATE.longestPath.has(task.id);
+    const inMp = STATE.mpPath && STATE.mpPath.has(task.id);
+    if (inLongest && inMp) cpStr = '⚡ 關鍵路徑 — 最長工程鏈 + MP交付鏈';
+    else if (inLongest) cpStr = '⚡ 最長工程鏈 — 延誤會壓縮整體開發時間';
+    else if (inMp) cpStr = '🎯 MP交付鏈 — 直接影響 MP 日期';
+    else cpStr = '';
   }
-  document.getElementById('ttcp').textContent = STATE.showCP ? floatStr : '';
+  document.getElementById('ttcp').textContent = cpStr;
   document.getElementById('tt').style.display = 'block';
 }
 function hideTT() { document.getElementById('tt').style.display = 'none'; }
