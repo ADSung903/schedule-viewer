@@ -2875,6 +2875,8 @@ function stateToProject(name, schFilename, mrdFilename) {
     updatedAt: fmtDate(TODAY),
     updatedTime: new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'}),
     version: PSM_VERSION,
+    infoData:   STATE._infoData   || {},
+    logEntries: STATE._logEntries || [],
     tasks: serialTasks,
     lanes: serialLanes,
     mrdResult: STATE.mrdResult || null,
@@ -2918,6 +2920,9 @@ function projectToState(proj) {
       if (found) { t.startDate = found.startDate; t.finishDate = found.finishDate; }
     });
   });
+  // restore info fields
+  STATE._infoData   = proj.infoData   || {};
+  STATE._logEntries = proj.logEntries || [];
 }
 
 function saveProjectNow(silent) {
@@ -3224,7 +3229,17 @@ function initApp() {
 }
 
 // ── Init ──
-document.addEventListener("DOMContentLoaded", initApp);
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    initApp();
+  } catch(e) {
+    console.error("initApp error:", e);
+    // fallback: show hub
+    document.getElementById('hubScreen').style.display = 'flex';
+    document.getElementById('uploadScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'none';
+  }
+});
 
 // ─────────────────────────────────────────────
 // PROJECT INFO FIELDS
@@ -3337,22 +3352,7 @@ function renderLogList() {
   }).join('');
 }
 
-// ── Persist info with project ──
-// Hook into stateToProject
-const _origStateToProject = stateToProject;
-function stateToProject(name, schFilename, mrdFilename) {
-  const proj = _origStateToProject(name, schFilename, mrdFilename);
-  proj.infoData    = STATE._infoData    || {};
-  proj.logEntries  = STATE._logEntries  || [];
-  return proj;
-}
-
-const _origProjectToState = projectToState;
-function projectToState(proj) {
-  _origProjectToState(proj);
-  STATE._infoData   = proj.infoData   || {};
-  STATE._logEntries = proj.logEntries || [];
-}
+// Info fields now handled inside stateToProject and projectToState directly
 
 </script>
 </body>
