@@ -113,9 +113,20 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 
 /* ── Tooltip ── */
 .tt{position:fixed;background:#06101a;border:1px solid #0ea5e9;border-radius:6px;padding:9px 12px;font-size:10px;pointer-events:none;z-index:999;max-width:260px;display:none;color:#7dd3fc;box-shadow:0 0 16px #0ea5e920}
-.tt-t{font-weight:500;margin-bottom:5px;color:#bae6fd;font-size:11px}
-.tt-r{color:#1e7aaa;margin:2px 0;line-height:1.5}
-.tt-cp{color:#fbbf24;margin-top:4px;font-size:9px}
+.tt-t{font-weight:500;margin-bottom:6px;color:#bae6fd;font-size:12px;border-bottom:1px solid #0d2d4a;padding-bottom:5px}
+.tt-r{color:#4a9aba;margin:3px 0;line-height:1.5;font-size:10px}
+.tt-cp{color:#fbbf24;margin-top:6px;font-size:9px;letter-spacing:0.04em}
+.tt-pred-title{font-size:8px;color:#1e5a7a;letter-spacing:0.08em;text-transform:uppercase;margin:6px 0 3px}
+.tt-pred-row{display:flex;align-items:flex-start;gap:6px;margin:2px 0;font-size:10px;line-height:1.4}
+.tt-pred-type{font-size:8px;padding:1px 5px;border-radius:2px;flex-shrink:0;margin-top:1px;font-weight:500;letter-spacing:0.04em}
+.tt-pred-fs{background:#1a0e2e;color:#a78bfa;border:1px solid #4c1d9540}
+.tt-pred-ss{background:#06101a;color:#38bdf8;border:1px solid #0ea5e940}
+.tt-pred-ff{background:#12100a;color:#fbbf24;border:1px solid #d9770640}
+.tt-pred-sf{background:#0a1208;color:#34d399;border:1px solid #05966940}
+.tt-pred-name{color:#8ab4cc;flex:1}
+.tt-pred-offset{color:#5a7a5a;font-size:9px;white-space:nowrap}
+.tt-succ-title{font-size:8px;color:#1e5a7a;letter-spacing:0.08em;text-transform:uppercase;margin:6px 0 3px}
+.tt-succ-row{font-size:10px;color:#5a8aaa;margin:2px 0;line-height:1.4}
 
 /* ── Legend ── */
 .legend{display:flex;gap:12px;padding:7px 0;flex-wrap:wrap}
@@ -235,7 +246,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
   <div class="tt-t" id="ttn"></div>
   <div class="tt-r" id="ttd"></div>
   <div class="tt-r" id="ttdu"></div>
-  <div class="tt-r" id="ttp"></div>
+  <div id="ttpWrap"></div>
   <div class="tt-cp" id="ttcp"></div>
 </div>
 
@@ -1368,19 +1379,61 @@ function showTT(id) {
   let task = null;
   STATE.tasks.forEach(t => { if (String(t.id) === String(id)) task = t; });
   if (!task) return;
-  const isCp = STATE.cpIds.has(task.id);
-  document.getElementById('ttn').textContent = task.n;
+
+  // build id→task lookup
+  const idMap = {};
+  STATE.tasks.forEach(t => { idMap[String(t.id)] = t; });
+
+  document.getElementById('ttn').textContent = `[${task.id}] ${task.n}`;
   document.getElementById('ttd').textContent = `📅 ${task.s}${task.f && task.f !== task.s ? ' → '+task.f : ''}`;
   document.getElementById('ttdu').textContent = task.dur ? `⏱ ${task.dur}` : '';
-  document.getElementById('ttp').textContent = task.pr ? `🔗 ${task.pr}` : '';
+
+  // ── Predecessors with Task Name ──
+  const wrap = document.getElementById('ttpWrap');
+  if (task.preds && task.preds.length > 0) {
+    const validPreds = task.preds.filter(p => p.valid !== false);
+    if (validPreds.length > 0) {
+      let html = '<div class="tt-pred-title">前置任務</div>';
+      validPreds.forEach(p => {
+        const predTask = idMap[String(p.id)];
+        const predName = predTask ? predTask.n : `ID ${p.id}`;
+        const typeClass = `tt-pred-${(p.type||'FS').toLowerCase()}`;
+        const offsetStr = p.offsetDays ? (p.offsetDays > 0 ? ` +${p.offsetDays}d` : ` ${p.offsetDays}d`) : '';
+        html += `<div class="tt-pred-row">
+          <span class="tt-pred-type ${typeClass}">${p.type||'FS'}</span>
+          <span class="tt-pred-name">[${p.id}] ${escH(predName.length > 30 ? predName.slice(0,30)+'…' : predName)}</span>
+          ${offsetStr ? `<span class="tt-pred-offset">${offsetStr}</span>` : ''}
+        </div>`;
+      });
+      wrap.innerHTML = html;
+    } else {
+      wrap.innerHTML = '';
+    }
+  } else {
+    wrap.innerHTML = '';
+  }
+
+  // ── Successors (tasks that depend on this one) ──
+  const succTasks = STATE.tasks.filter(t =>
+    (t.preds||[]).some(p => String(p.id) === String(task.id))
+  );
+  if (succTasks.length > 0) {
+    let succHtml = '<div class="tt-succ-title">後續任務 (' + succTasks.length + ')</div>';
+    succTasks.slice(0, 4).forEach(s => {
+      succHtml += `<div class="tt-succ-row">→ [${s.id}] ${escH(s.n.length > 32 ? s.n.slice(0,32)+'…' : s.n)}</div>`;
+    });
+    if (succTasks.length > 4) succHtml += `<div class="tt-succ-row" style="color:#1e5a7a">…另有 ${succTasks.length-4} 個後續任務</div>`;
+    wrap.innerHTML += succHtml;
+  }
+
+  // ── CP label ──
   let cpStr = '';
   if (STATE.showCP) {
     const inLongest = STATE.longestPath && STATE.longestPath.has(task.id);
     const inMp = STATE.mpPath && STATE.mpPath.has(task.id);
-    if (inLongest && inMp) cpStr = '⚡ 關鍵路徑 — 最長工程鏈 + MP交付鏈';
+    if (inLongest && inMp) cpStr = '⚡ 最長工程鏈 + MP交付鏈';
     else if (inLongest) cpStr = '⚡ 最長工程鏈 — 延誤會壓縮整體開發時間';
     else if (inMp) cpStr = '🎯 MP交付鏈 — 直接影響 MP 日期';
-    else cpStr = '';
   }
   document.getElementById('ttcp').textContent = cpStr;
   document.getElementById('tt').style.display = 'block';
