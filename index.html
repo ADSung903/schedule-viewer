@@ -81,6 +81,20 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .sc-val.green{color:#34d399;text-shadow:0 0 8px #10b98160}
 .sc-val.red{color:#f87171;text-shadow:0 0 8px #ef444460}
 .sc-sub{font-size:10px;color:#5a9aba;margin-top:3px}
+.action-bar{background:#070d18;border-bottom:2px solid #0d3a5a;padding:8px 0;display:none}
+.action-bar.visible{display:block}
+.action-bar.hidden{display:none}
+.action-inner{display:flex;align-items:flex-start;gap:10px}
+.action-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.action-content{flex:1}
+.action-label{font-size:8px;color:#1e5a7a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px}
+.action-text{font-size:11px;color:#c8e6ff;line-height:1.5}
+.action-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.action-chip{font-size:9px;padding:2px 7px;border-radius:2px;letter-spacing:0.04em}
+.chip-warn{background:#1a1200;color:#fbbf24;border:1px solid #d9770640}
+.chip-ok{background:#0a1a12;color:#34d399;border:1px solid #05966940}
+.chip-info{background:#06101a;color:#38bdf8;border:1px solid #0ea5e940}
+.chip-red{background:#1a0808;color:#f87171;border:1px solid #ef444440}
 .prog-wrap{padding:6px 0 8px;background:#070d18;border-bottom:1px solid #0d2d4a}
 .prog-wrap.hidden{display:none}
 .prog-label{font-size:9px;color:#4a9ab8;letter-spacing:0.1em;margin-bottom:4px;text-transform:uppercase}
@@ -248,7 +262,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="upload-title">Project Schedule Viewer</div>
     <div class="upload-sub" style="margin-top:4px">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.012</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.013</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -259,6 +273,14 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
       <span class="changelog-toggle" id="clToggle">▼ 展開</span>
     </div>
     <div class="changelog-body" id="clBody">
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.013</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">狀態面板新增「下一步行動建議」欄，依距離天數自動給出提醒</li>
+          <li class="cl-item">Cert Tree 動態從 MRD AI 分析結果生成（有 MRD 時自動更新）</li>
+          <li class="cl-item">Excel Summary Sheet 加入 App 版本號與匯出日期</li>
+        </ul>
+      </div>
       <div class="cl-entry">
         <div class="cl-ver"><span class="cl-ver-num">V0.012</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-fix">FIX</span></div>
         <ul class="cl-items">
@@ -407,6 +429,18 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
   <div class="ms-list" id="msList">
     <div class="ms-title">關鍵里程碑</div>
     <div id="msRows"></div>
+  </div>
+
+  <!-- Action suggestion bar -->
+  <div class="action-bar" id="actionBar">
+    <div class="action-inner">
+      <div class="action-icon" id="actionIcon">💡</div>
+      <div class="action-content">
+        <div class="action-label">下一步行動建議</div>
+        <div class="action-text" id="actionText">—</div>
+        <div class="action-chips" id="actionChips"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Tabs -->
@@ -706,6 +740,7 @@ let STATE = {
   zoom: 'month',
   barPositions: {},
   floatMap: {},
+  mrdResult: null,
   longestPath: new Set(),
   mpPath: new Set(),
   distMap: {},
@@ -1169,6 +1204,99 @@ function buildStatusPanel() {
     </div>`;
   });
   document.getElementById('msRows').innerHTML = mhtml;
+
+  // ── Action suggestion ──
+  buildActionSuggestion(futureMilestones, elapsed, totalDays, pct);
+}
+
+function buildActionSuggestion(futureMilestones, elapsed, totalDays, pct) {
+  const bar   = document.getElementById('actionBar');
+  const icon  = document.getElementById('actionIcon');
+  const text  = document.getElementById('actionText');
+  const chips = document.getElementById('actionChips');
+
+  bar.className = 'action-bar visible';
+
+  // find next milestone and days remaining
+  const next = futureMilestones[0];
+  if (!next) {
+    icon.textContent = '✅';
+    text.textContent = '所有里程碑已完成，請確認 MP 出貨準備。';
+    chips.innerHTML = '<span class="action-chip chip-ok">MP Ready</span>';
+    return;
+  }
+
+  const diff    = Math.round((next.startDate - TODAY) / 86400000);
+  const nextN   = next.n.length > 40 ? next.n.slice(0,40) + '…' : next.n;
+  const isCp    = STATE.cpIds.has(next.id);
+  const inLng   = STATE.longestPath && STATE.longestPath.has(next.id);
+  const inMp    = STATE.mpPath && STATE.mpPath.has(next.id);
+
+  // find what tasks are overdue (past deadline with ms flag)
+  const overdue = STATE.tasks.filter(t => t.ms && t.startDate < TODAY && Math.round((t.startDate-TODAY)/86400000) > -60);
+
+  let suggestion = '';
+  let chipsHtml  = '';
+  let ico        = '💡';
+
+  if (diff < 0) {
+    // next milestone is already past
+    ico = '⚠️';
+    suggestion = `「${nextN}」已逾期 ${Math.abs(diff)} 天，請立即確認完成狀態或更新時程。`;
+    chipsHtml += `<span class="action-chip chip-red">逾期 ${Math.abs(diff)}d</span>`;
+    if (isCp) chipsHtml += '<span class="action-chip chip-warn">⚡ 影響關鍵路徑</span>';
+
+  } else if (diff <= 7) {
+    ico = '🔴';
+    suggestion = `「${nextN}」還有 ${diff} 天到期，本週內必須完成準備。`;
+    chipsHtml += `<span class="action-chip chip-red">${diff}天後</span>`;
+    if (isCp) chipsHtml += '<span class="action-chip chip-warn">⚡ 關鍵路徑節點</span>';
+    // find what needs to be ready
+    const prereqs = STATE.tasks.filter(t =>
+      (t.preds||[]).some(p => String(p.id) === String(next.id)) === false &&
+      (next.preds||[]).some(p => String(p.id) === String(t.id))
+    );
+    if (prereqs.length > 0) {
+      chipsHtml += prereqs.slice(0,2).map(p =>
+        `<span class="action-chip chip-info">前置: ${p.n.slice(0,16)}</span>`
+      ).join('');
+    }
+
+  } else if (diff <= 14) {
+    ico = '🟡';
+    suggestion = `「${nextN}」還有 ${diff} 天，建議本週開始確認前置作業是否就位。`;
+    chipsHtml += `<span class="action-chip chip-warn">${diff}天後</span>`;
+    if (inMp) chipsHtml += '<span class="action-chip chip-info">🎯 MP交付鏈</span>';
+
+  } else if (diff <= 30) {
+    ico = '🔵';
+    suggestion = `「${nextN}」還有 ${diff} 天（${next.s}），請確認相關準備進度。`;
+    chipsHtml += `<span class="action-chip chip-info">${diff}天後</span>`;
+    if (inLng) chipsHtml += '<span class="action-chip chip-info">⚡ 最長工程鏈</span>';
+
+  } else {
+    ico = '💡';
+    // look at overall progress
+    if (pct < 20) {
+      suggestion = `專案進度 ${pct}%，目前在早期階段。下一里程碑「${nextN}」在 ${diff} 天後（${next.s}）。`;
+    } else if (pct < 50) {
+      suggestion = `專案進度 ${pct}%，開發中段。下一里程碑「${nextN}」在 ${diff} 天後。`;
+    } else if (pct < 80) {
+      suggestion = `專案進度 ${pct}%，進入認證與驗證密集期。下一里程碑「${nextN}」在 ${diff} 天後。`;
+    } else {
+      suggestion = `專案進度 ${pct}%，接近 MP。下一里程碑「${nextN}」在 ${diff} 天後，注意收尾事項。`;
+    }
+    chipsHtml += `<span class="action-chip chip-ok">${diff}天後</span>`;
+  }
+
+  // add overdue warning chips
+  if (overdue.length > 0) {
+    chipsHtml += `<span class="action-chip chip-red">⚠ ${overdue.length}個里程碑已過期</span>`;
+  }
+
+  icon.textContent  = ico;
+  text.textContent  = suggestion;
+  chips.innerHTML   = chipsHtml;
 }
 
 // ─────────────────────────────────────────────
@@ -1388,7 +1516,10 @@ function switchTab(name) {
     const panEl = document.getElementById('panel'+t.charAt(0).toUpperCase()+t.slice(1)); if(panEl) panEl.className = 'tab-panel' + (t===name?' active':'');
   });
   if (name === 'sch') renderSchTable();
-  if (name === 'cert') setTimeout(initCertTree, 50);
+  if (name === 'cert') setTimeout(() => {
+    if (STATE.mrdResult) renderDynCertTree(STATE.mrdResult);
+    else initCertTree();
+  }, 50);
   if (name === 'gantt') {
     // re-trigger canvas after tab becomes visible
     setTimeout(() => drawConnections(), 50);
@@ -1934,6 +2065,13 @@ function renderMrdResult(r) {
 
   html += '</div>';
   document.getElementById('mrdContent').innerHTML = html;
+
+  // store result for cert tree dynamic rendering
+  STATE.mrdResult = r;
+  // if currently on cert tab, refresh it
+  if (document.getElementById('panelCert').classList.contains('active')) {
+    renderDynCertTree(r);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -2083,7 +2221,9 @@ function exportExcel() {
 
   const s4 = [
     ['Project',          proj],
-    ['Generated',        today],
+    ['App Version',      'V0.013'],
+    ['Export Date',      today],
+
     [''],
     ['Project Start',    fmtDate(STATE.projectStart)],
     ['Project End',      fmtDate(STATE.projectEnd)],
@@ -2110,6 +2250,108 @@ function exportExcel() {
   log('ok', `匯出完成`);
 }
 
+
+
+// ─────────────────────────────────────────────
+// DYNAMIC CERT TREE from MRD Analysis
+// ─────────────────────────────────────────────
+function renderDynCertTree(mrd) {
+  const panel = document.getElementById('panelCert');
+  const certs = (mrd && mrd.certifications) || [];
+  if (!certs.length) { initCertTree(); return; }
+
+  // Group certs by category
+  const groups = {};
+  certs.forEach(c => {
+    const cat = c.category || 'Other';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(c);
+  });
+
+  const catColors = {
+    'Safety':      { border:'#2563eb', bg:'#06101a', text:'#93c5fd', hdr:'#0F3460' },
+    'EMI':         { border:'#0ea5e9', bg:'#061018', text:'#7dd3fc', hdr:'#0a1e30' },
+    'Energy':      { border:'#10b981', bg:'#061210', text:'#6ee7b7', hdr:'#052e16' },
+    'Ergonomics':  { border:'#8b5cf6', bg:'#0d0820', text:'#c4b5fd', hdr:'#1e0e45' },
+    'Other':       { border:'#3a7a9a', bg:'#060e14', text:'#7dd3fc', hdr:'#0a1828' },
+  };
+
+  const riskColors = {
+    'high': { bg:'#1a0808', text:'#f87171', border:'#ef444440' },
+    'med':  { bg:'#12100a', text:'#fbbf24', border:'#d9770640' },
+    'low':  { bg:'#0a1a12', text:'#34d399', border:'#05966940' },
+  };
+
+  // find key SCH milestones for trigger mapping
+  const sit = STATE.tasks.find(t => /sit.*build|build.*t1|t1.*sample/i.test(t.n));
+  const dvt = STATE.tasks.find(t => /dvt.*exit|dvt/i.test(t.n));
+  const svt = STATE.tasks.find(t => /svt.*exit|svt/i.test(t.n));
+  const mp  = STATE.tasks.filter(t => t.ms).sort((a,b) => b.finishDate - a.finishDate)[0];
+
+  let html = `<div style="padding:10px 0 6px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="font-size:9px;color:#3a8aaa;letter-spacing:0.1em;text-transform:uppercase">
+      ${mrd.product?.name || 'Project'} — Dynamic Cert Tree (from MRD AI)
+    </div>
+    <div style="font-size:9px;color:#1e5a7a">共 ${certs.length} 項認證</div>
+  </div>`;
+
+  // trigger milestones summary
+  html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">`;
+  if (sit) html += `<div style="font-size:9px;padding:3px 8px;background:#06101a;border:1px solid #0d2d4a;border-radius:3px;color:#3a8aaa">SIT Build: ${sit.s}</div>`;
+  if (dvt) html += `<div style="font-size:9px;padding:3px 8px;background:#06101a;border:1px solid #0d2d4a;border-radius:3px;color:#3a8aaa">DVT Exit: ${dvt.s}</div>`;
+  if (svt) html += `<div style="font-size:9px;padding:3px 8px;background:#06101a;border:1px solid #0d2d4a;border-radius:3px;color:#3a8aaa">SVT Exit: ${svt.s}</div>`;
+  if (mp)  html += `<div style="font-size:9px;padding:3px 8px;background:#12100a;border:1px solid #d9770640;border-radius:3px;color:#fbbf24">MP: ${mp.s}</div>`;
+  html += `</div>`;
+
+  // render each category as a swim column
+  html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;overflow:auto;border:1px solid #0d2d4a;border-radius:6px;padding:12px;background:#060a10">`;
+
+  Object.entries(groups).forEach(([cat, items]) => {
+    const cc = catColors[cat] || catColors['Other'];
+    html += `<div style="background:${cc.bg};border:1px solid ${cc.border}33;border-radius:6px;overflow:hidden">`;
+    html += `<div style="background:${cc.hdr};padding:6px 10px;font-size:9px;font-weight:500;color:${cc.text};letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid ${cc.border}44">${cat}</div>`;
+    items.forEach(c => {
+      const rc = riskColors[c.risk_level] || riskColors['low'];
+      html += `<div style="padding:7px 10px;border-bottom:1px solid ${cc.border}22;cursor:default"
+        title="${escH(c.notes||'')}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:2px">
+          <span style="font-size:11px;font-weight:500;color:${cc.text}">${escH(c.name)}</span>
+          <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${rc.bg};color:${rc.text};border:1px solid ${rc.border};flex-shrink:0">${c.risk_level||'low'}</span>
+        </div>
+        <div style="font-size:9px;color:#3a7a9a">${escH(c.region||'')}</div>
+        ${c.notes ? `<div style="font-size:9px;color:#1e5a7a;margin-top:2px;line-height:1.4">${escH(c.notes)}</div>` : ''}
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+
+  // risk summary
+  const highRisk = certs.filter(c => c.risk_level === 'high');
+  const medRisk  = certs.filter(c => c.risk_level === 'med');
+  if (highRisk.length || medRisk.length) {
+    html += `<div style="margin-top:10px;padding:8px 10px;background:#0a0608;border:1px solid #7f1d1d40;border-radius:4px">
+      <div style="font-size:9px;color:#f87171;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">⚠ 風險認證</div>`;
+    [...highRisk, ...medRisk].forEach(c => {
+      const rc = riskColors[c.risk_level] || riskColors['low'];
+      html += `<div style="font-size:10px;color:${rc.text};margin:3px 0">
+        <span style="color:#1e5a7a">[${c.risk_level.toUpperCase()}]</span> ${escH(c.name)} — ${escH(c.region||'')}
+        ${c.notes ? `<span style="color:#1e5a7a"> · ${escH(c.notes)}</span>` : ''}
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  panel.querySelector('.tab-panel') || panel;
+  // find the existing static content and replace
+  const existingContent = panel.querySelector('div[style*="overflow"]') || panel.children[1];
+  if (existingContent) {
+    existingContent.outerHTML = `<div>${html}</div>`;
+  } else {
+    panel.innerHTML = `<div>${html}</div>`;
+  }
+}
 
 
 // ─────────────────────────────────────────────
