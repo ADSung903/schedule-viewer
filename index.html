@@ -1875,16 +1875,36 @@ function exportExcel() {
   // Headers with clear markers
   const s1 = [];
   s1.push(['ID', 'Task Name', 'Duration', 'Start', 'Finish', 'Predecessors', 'Lane', 'MS', 'CP']);
-  s1.push(['---', '---', '---', '---', '---', '---', '---', '---', '---']);
+  s1.push(['', '', '', '', '', '', '', '', '']);
+
+  // build id→task map for predecessor lookup
+  const idMapEx = {};
+  STATE.tasks.forEach(t => { idMapEx[String(t.id)] = t; });
 
   let lastLane = '';
   STATE.tasks.forEach(t => {
-    const isCp   = STATE.cpIds.has(t.id);
-    const inLng  = STATE.longestPath && STATE.longestPath.has(t.id);
-    const inMp   = STATE.mpPath && STATE.mpPath.has(t.id);
-    const lane   = STATE.lanes.find(l => l.tasks.some(lt => lt.id === t.id));
+    const isCp      = STATE.cpIds.has(t.id);
+    const inLng     = STATE.longestPath && STATE.longestPath.has(t.id);
+    const inMp      = STATE.mpPath && STATE.mpPath.has(t.id);
+    const lane      = STATE.lanes.find(l => l.tasks.some(lt => lt.id === t.id));
     const laneLabel = lane ? lane.label : '';
-    const finish = t.f && t.f !== t.s ? t.f : '';
+
+    // correct finish: use t.f only if different from t.s, else empty
+    const finishVal = (t.f && t.f !== t.s) ? t.f : '';
+
+    // correct predecessors: show "ID TaskName (type+offset)" format
+    let predStr = '';
+    if (t.preds && t.preds.length > 0) {
+      predStr = t.preds.filter(p => p.valid !== false).map(p => {
+        const pt = idMapEx[String(p.id)];
+        const name = pt ? pt.n.slice(0,20) : p.id;
+        const type = p.type || 'FS';
+        const off  = p.offsetDays ? (p.offsetDays > 0 ? `+${p.offsetDays}d` : `${p.offsetDays}d`) : '';
+        return `[${p.id}]${name} ${type}${off}`;
+      }).join('; ');
+    } else if (t.pr) {
+      predStr = t.pr;
+    }
 
     // Insert lane separator row when lane changes
     if (laneLabel && laneLabel !== lastLane) {
@@ -1893,11 +1913,10 @@ function exportExcel() {
       lastLane = laneLabel;
     }
 
-    // indent task name by level
     const indent = '  '.repeat(t.lv);
     const msFlag = t.ms ? '◆' : '';
     let cpFlag = '';
-    if (inLng && inMp) cpFlag = '★★';
+    if (inLng && inMp) cpFlag = '★★ 工程鏈+MP';
     else if (inLng)    cpFlag = '★ 工程鏈';
     else if (inMp)     cpFlag = '★ MP鏈';
 
@@ -1906,8 +1925,8 @@ function exportExcel() {
       indent + t.n,
       t.dur || '',
       t.s,
-      finish,
-      t.pr || '',
+      finishVal,
+      predStr,
       laneLabel,
       msFlag,
       cpFlag
@@ -1934,7 +1953,9 @@ function exportExcel() {
 
   const lngTasks = STATE.tasks.filter(t => STATE.longestPath && STATE.longestPath.has(t.id));
   lngTasks.forEach(t => {
-    s2.push([t.id, t.n, t.dur||'', t.s, t.f!==t.s?t.f:'', t.pr||'']);
+    const cpFinish = (t.f && t.f !== t.s) ? t.f : '';
+    const cpPred = (t.preds||[]).filter(p=>p.valid!==false).map(p=>`[${p.id}]${p.type||'FS'}${p.offsetDays?'+'+p.offsetDays+'d':''}`).join('; ') || t.pr || '';
+    s2.push([t.id, t.n, t.dur||'', t.s, cpFinish, cpPred]);
   });
 
   s2.push(['', '', '', '', '', '']);
@@ -1943,7 +1964,9 @@ function exportExcel() {
 
   const mpTasks = STATE.tasks.filter(t => STATE.mpPath && STATE.mpPath.has(t.id));
   mpTasks.forEach(t => {
-    s2.push([t.id, t.n, t.dur||'', t.s, t.f!==t.s?t.f:'', t.pr||'']);
+    const cpFinish = (t.f && t.f !== t.s) ? t.f : '';
+    const cpPred = (t.preds||[]).filter(p=>p.valid!==false).map(p=>`[${p.id}]${p.type||'FS'}${p.offsetDays?'+'+p.offsetDays+'d':''}`).join('; ') || t.pr || '';
+    s2.push([t.id, t.n, t.dur||'', t.s, cpFinish, cpPred]);
   });
 
   const ws2 = XLSX.utils.aoa_to_sheet(s2);
