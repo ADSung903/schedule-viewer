@@ -1533,19 +1533,62 @@ function loadMrdFile(file) {
   reader.onload = e => {
     try {
       const wb = XLSX.read(e.target.result, { type: 'array' });
-      // extract all text from all sheets
+
+      // ── Smart sheet priority ──
+      // High value: product spec, sales scope, certification requirements
+      // Low value:  OSD, SW features, compatibility details, revision history
+      const PRIORITY_HIGH = [/mrd/i, /main/i, /spec/i, /product/i, /sale.*country/i, /country.*scope/i, /cert/i, /approval/i, /panel.*part/i, /part.*no/i];
+      const PRIORITY_MED  = [/feature/i, /requirement/i, /interface/i];
+      const SKIP          = [/osd/i, /sw.*feature/i, /software/i, /compat/i, /revision/i, /change.*log/i, /history/i];
+
+      function sheetPriority(name) {
+        if (SKIP.some(r => r.test(name)))     return 0;
+        if (PRIORITY_HIGH.some(r => r.test(name))) return 3;
+        if (PRIORITY_MED.some(r => r.test(name)))  return 2;
+        return 1;
+      }
+
+      // Sort sheets by priority (high → low)
+      const sortedSheets = [...wb.SheetNames].sort((a,b) => sheetPriority(b) - sheetPriority(a));
+
+      // Extract text with budget: high-priority sheets get more space
       let text = '';
-      wb.SheetNames.forEach(name => {
+      let skipped = [];
+      const BUDGET = 9000; // total char budget
+
+      sortedSheets.forEach(name => {
+        const pri = sheetPriority(name);
+        if (pri === 0) { skipped.push(name); return; } // skip low-value sheets
+
         const ws = wb.Sheets[name];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-        text += `\n=== Sheet: ${name} ===\n`;
+        let sheetText = `\n=== Sheet: ${name} (priority:${pri}) ===\n`;
         rows.forEach(row => {
-          const line = row.map(c => String(c||'').trim()).filter(Boolean).join(' | ');
-          if (line) text += line + '\n';
+          const line = row.map(c => String(c||'').trim()).filter(c => c.length > 0).join(' | ');
+          if (line.length > 2) sheetText += line + '\n';
         });
+
+        // Each sheet budget: high=3000, med=2000, low=1500
+        const sheetBudget = pri === 3 ? 3000 : pri === 2 ? 2000 : 1500;
+        const trimmed = sheetText.slice(0, sheetBudget);
+        if (text.length + trimmed.length <= BUDGET) {
+          text += trimmed;
+        } else {
+          const remaining = BUDGET - text.length;
+          if (remaining > 200) text += trimmed.slice(0, remaining) + '\n[...truncated]';
+        }
       });
-      mrdRawText = text.slice(0, 8000); // limit tokens to leave room for response
-      document.getElementById('mrdDropStatus').textContent = `✓ ${file.name} 已載入（${wb.SheetNames.length} sheets）`;
+
+      // Add skipped sheet names so AI knows what was omitted
+      if (skipped.length > 0) {
+        text += `\n=== Skipped (low value): ${skipped.join(', ')} ===`;
+      }
+
+      mrdRawText = text;
+      const usedPct = Math.round(text.length / BUDGET * 100);
+      const highSheets = sortedSheets.filter(n => sheetPriority(n) === 3);
+      document.getElementById('mrdDropStatus').textContent =
+        `✓ ${file.name} — ${wb.SheetNames.length} sheets，讀取 ${usedPct}% 預算，優先：${highSheets.join(', ')||'(自動偵測)'}`;
       document.getElementById('mrdDropStatus').style.color = '#34d399';
       document.getElementById('btnMrdAnalyze').disabled = false;
     } catch(err) {
