@@ -15,6 +15,27 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 #uploadScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:24px}
 .upload-title{font-size:22px;font-weight:500;color:#7dd3fc;letter-spacing:0.1em;text-transform:uppercase}
 .upload-sub{font-size:11px;color:#3a8aaa;letter-spacing:0.07em}
+.version-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#1e5a7a;padding:3px 10px;border:1px solid #0d2d4a;border-radius:3px;letter-spacing:0.08em;background:#06101a}
+.version-num{color:#38bdf8;font-weight:500}
+.changelog{width:480px;background:#06101a;border:1px solid #0d2d4a;border-radius:6px;overflow:hidden}
+.changelog-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #0d2d4a;cursor:pointer;user-select:none}
+.changelog-hdr:hover{background:#080d14}
+.changelog-title{font-size:9px;color:#3a8aaa;letter-spacing:0.1em;text-transform:uppercase}
+.changelog-toggle{font-size:9px;color:#1e5a7a}
+.changelog-body{display:none;max-height:260px;overflow-y:auto}
+.changelog-body.open{display:block}
+.cl-entry{padding:8px 12px;border-bottom:1px solid #091828}
+.cl-entry:last-child{border:none}
+.cl-ver{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.cl-ver-num{font-size:10px;font-weight:500;color:#38bdf8;letter-spacing:0.05em}
+.cl-ver-date{font-size:9px;color:#1e5a7a}
+.cl-ver-tag{font-size:8px;padding:1px 6px;border-radius:2px;letter-spacing:0.06em}
+.cl-tag-feat{background:#0a1a12;color:#34d399;border:1px solid #05966940}
+.cl-tag-fix{background:#12100a;color:#fbbf24;border:1px solid #d9770640}
+.cl-tag-improve{background:#06101a;color:#38bdf8;border:1px solid #0ea5e940}
+.cl-items{list-style:none;padding:0}
+.cl-item{font-size:10px;color:#5a8aaa;margin:2px 0;padding-left:12px;position:relative;line-height:1.5}
+.cl-item::before{content:"·";position:absolute;left:2px;color:#1e5a7a}
 .drop-zone{width:480px;border:1px dashed #0d3a5a;border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;background:#06101a;position:relative}
 .drop-zone:hover,.drop-zone.drag{border-color:#0ea5e9;background:#071828;box-shadow:0 0 20px #0ea5e920}
 .drop-icon{font-size:36px;color:#1e5a7a;margin-bottom:12px}
@@ -223,9 +244,110 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 
 <!-- Upload Screen -->
 <div id="uploadScreen">
-  <div>
+  <div style="text-align:center">
     <div class="upload-title">Project Schedule Viewer</div>
-    <div class="upload-sub" style="margin-top:4px">QD-OLED · GANTT · CRITICAL PATH · TRON MODE</div>
+    <div class="upload-sub" style="margin-top:4px">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
+    <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <div class="version-badge">Version <span class="version-num">V0.012</span></div>
+      <div class="version-badge">2026/05/25</div>
+    </div>
+  </div>
+
+  <div class="changelog">
+    <div class="changelog-hdr" onclick="toggleCL()">
+      <span class="changelog-title">Changelog</span>
+      <span class="changelog-toggle" id="clToggle">▼ 展開</span>
+    </div>
+    <div class="changelog-body" id="clBody">
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.012</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-fix">FIX</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">Excel 匯出欄位錯位修正（Finish / Predecessors）</li>
+          <li class="cl-item">Excel 回歸乾淨 Raw SCH 風格，移除符號過多設計</li>
+          <li class="cl-item">Predecessors 欄顯示 ID + Task Name 前18字</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.011</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-improve">IMPROVE</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">MRD 解析優先讀高價值 Sheet，自動跳過 OSD / SW Features</li>
+          <li class="cl-item">狀態面板加深色色塊，與甘特圖區隔</li>
+          <li class="cl-item">Tab 列背景調整，三區域層次分明</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.010</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">Tooltip 升級：顯示前置任務 Task Name + 類型色標（FS/SS/FF/SF）</li>
+          <li class="cl-item">Tooltip 新增後續任務列表（最多4筆）</li>
+          <li class="cl-item">Excel 匯出按鈕（4個 Sheet）</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.009</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">認證依賴樹（Cert Tree）整合為第四個 Tab，Tron 暗色主題</li>
+          <li class="cl-item">Cert Tree Hover Tooltip 詳細說明每個認證的 Lead time 與風險</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.008</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">關鍵路徑改為方向B：最長工程鏈（琥珀）+ MP交付鏈（藍）雙路徑</li>
+          <li class="cl-item">走線依真實 Predecessor 連線，直角電路板風格</li>
+          <li class="cl-item">MON/WK 切換比例正確，週視圖自動加寬</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.007</span><span class="cl-ver-date">2026/05/24</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">MRD AI 分析（Cloudflare Worker 中轉）</li>
+          <li class="cl-item">SCH 上傳後自動提示上傳 MRD，API Key 存 localStorage</li>
+          <li class="cl-item">MRD ANALYSIS Tab：Product Overview、認證、風險、文件</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.006</span><span class="cl-ver-date">2026/05/23</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">RAW SCH Tab：完整任務表格，搜尋 / 篩選 CP / 里程碑</li>
+          <li class="cl-item">Predecessors 解析著色（FS/SS/FF/SF），全域對比度提升</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.005</span><span class="cl-ver-date">2026/05/23</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">今日狀態面板（5張卡片）：進度、階段、下一里程碑、MP倒數</li>
+          <li class="cl-item">里程碑清單，距今天數色標（逾期紅、14天內橙、正常綠）</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.004</span><span class="cl-ver-date">2026/05/22</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">Tron 關鍵路徑走線動畫，電路板 L 型轉彎 + 發光光點</li>
+          <li class="cl-item">走線速度 x3，靜態虛線底層預覽</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.003</span><span class="cl-ver-date">2026/05/22</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">Excel 上傳解析：縮排層級、日期多格式、Duration edays/wks</li>
+          <li class="cl-item">容錯：ID重複警告、日期解析失敗提示、解析 Log</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.002</span><span class="cl-ver-date">2026/05/22</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">五泳道甘特圖：主流程、面板、認證、Logo、SoVP</li>
+          <li class="cl-item">今日紅線、里程碑菱形、任務條 Tooltip、MON/WK 切換</li>
+        </ul>
+      </div>
+      <div class="cl-entry">
+        <div class="cl-ver"><span class="cl-ver-num">V0.001</span><span class="cl-ver-date">2026/05/22</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+        <ul class="cl-items">
+          <li class="cl-item">Tron 暗色甘特圖初版，三泳道視覺化，深色格線背景</li>
+        </ul>
+      </div>
+    </div>
   </div>
   <div class="drop-zone" id="dropZone">
     <input type="file" id="fileInput" accept=".xlsx,.xls">
@@ -2041,6 +2163,14 @@ function moveCertTip(e) {
     if (y + 320 > window.innerHeight) y = e.clientY - 200;
     el.style.left = x + 'px'; el.style.top = y + 'px';
   }
+}
+
+
+function toggleCL() {
+  const body = document.getElementById('clBody');
+  const tog  = document.getElementById('clToggle');
+  const open = body.classList.toggle('open');
+  tog.textContent = open ? '▲ 收合' : '▼ 展開';
 }
 
 </script>
