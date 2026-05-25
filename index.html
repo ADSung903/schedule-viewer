@@ -281,6 +281,46 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 .proj-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .proj-updated{font-size:9px;color:#1e5a7a;white-space:nowrap}
 
+
+/* ── Project Info Tab ── */
+.info-wrap{padding:4px 0 16px}
+.info-section{margin-bottom:12px;background:#06101a;border:1px solid #0d2d4a;border-radius:6px;overflow:hidden}
+.info-section-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#070d18;border-bottom:1px solid #0d2d4a;cursor:pointer;user-select:none}
+.info-section-hdr:hover{background:#080f1e}
+.info-section-title{font-size:9px;font-weight:500;color:#4a9ab8;letter-spacing:0.1em;text-transform:uppercase}
+.info-section-body{padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.info-section-body.hidden{display:none}
+.info-field{display:flex;flex-direction:column;gap:3px}
+.info-field.wide{grid-column:1/-1}
+.info-label{font-size:8px;color:#1e5a7a;letter-spacing:0.08em;text-transform:uppercase}
+.info-input{background:#060a10;border:1px solid #0d2d4a;border-radius:3px;color:#c8e6ff;padding:5px 8px;font-size:11px;outline:none;font-family:inherit;width:100%}
+.info-input:focus{border-color:#0ea5e9;box-shadow:0 0 4px #0ea5e920}
+.info-input::placeholder{color:#1e5a7a}
+.info-select{background:#060a10;border:1px solid #0d2d4a;border-radius:3px;color:#c8e6ff;padding:5px 8px;font-size:11px;outline:none;width:100%}
+.info-select:focus{border-color:#0ea5e9}
+.info-textarea{background:#060a10;border:1px solid #0d2d4a;border-radius:3px;color:#c8e6ff;padding:5px 8px;font-size:11px;outline:none;font-family:inherit;width:100%;resize:vertical;min-height:64px;line-height:1.5}
+.info-textarea:focus{border-color:#0ea5e9}
+.info-save-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 0 2px;flex-wrap:wrap;gap:8px}
+.info-saved{font-size:9px;color:#1e5a7a}
+/* Update Log */
+.log-list{padding:0}
+.log-row{display:flex;align-items:flex-start;gap:8px;padding:7px 12px;border-bottom:1px solid #091828;font-size:10px}
+.log-row:last-child{border:none}
+.log-date{color:#1e5a7a;white-space:nowrap;min-width:70px;font-size:9px;margin-top:1px}
+.log-cat{font-size:8px;padding:1px 6px;border-radius:2px;white-space:nowrap;flex-shrink:0}
+.log-cat-panel{background:#052e16;color:#34d399;border:1px solid #05966940}
+.log-cat-schedule{background:#06101a;color:#38bdf8;border:1px solid #0ea5e940}
+.log-cat-cert{background:#1a0808;color:#f87171;border:1px solid #ef444440}
+.log-cat-spec{background:#2d1060;color:#c4b5fd;border:1px solid #7c3aed40}
+.log-cat-other{background:#0a1520;color:#5a9aba;border:1px solid #0d2d4a}
+.log-text{flex:1;color:#8ab4cc;line-height:1.5}
+.log-del{font-size:9px;color:#1e5a7a;cursor:pointer;flex-shrink:0;padding:0 2px}
+.log-del:hover{color:#f87171}
+.log-add-row{display:flex;gap:6px;padding:10px 12px;border-top:1px solid #0d2d4a;flex-wrap:wrap;align-items:flex-end}
+.log-add-row .info-input{flex:1;min-width:120px}
+.log-add-row .info-select{width:110px;flex-shrink:0}
+.panel-etd-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+
 /* ── Parse log ── */
 #parseLog{display:none;margin-top:8px;background:#06101a;border:1px solid #0d2d4a;border-radius:4px;padding:10px;font-size:10px;color:#3a7a9a;max-height:120px;overflow-y:auto}
 .log-ok{color:#34d399}.log-warn{color:#fbbf24}.log-err{color:#f87171}
@@ -524,6 +564,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="tab" id="tabSch" onclick="switchTab('sch')">≡ RAW SCH</div>
     <div class="tab" id="tabMrd" onclick="switchTab('mrd')" style="display:none">◈ MRD ANALYSIS</div>
     <div class="tab" id="tabCert" onclick="switchTab('cert')">⬡ CERT TREE</div>
+    <div class="tab" id="tabInfo" onclick="switchTab('info')">📁 PROJECT INFO</div>
   </div>
 
   <!-- Tab: Gantt -->
@@ -756,6 +797,242 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     </div>
   </div>
 
+  <!-- Tab: Project Info -->
+  <div class="tab-panel" id="panelInfo">
+    <div class="info-wrap">
+
+      <!-- Basic Info -->
+      <div class="info-section">
+        <div class="info-section-hdr" onclick="toggleInfoSection('sec-basic')">
+          <span class="info-section-title">基本資訊</span>
+          <span style="font-size:9px;color:#1e5a7a" id="sec-basic-tog">▼</span>
+        </div>
+        <div class="info-section-body" id="sec-basic">
+          <div class="info-field">
+            <div class="info-label">Project Name</div>
+            <input class="info-input" id="inf-proj-name" placeholder="Legion 32UL-20">
+          </div>
+          <div class="info-field">
+            <div class="info-label">Project Code</div>
+            <input class="info-input" id="inf-proj-code" placeholder="32UL-20">
+          </div>
+          <div class="info-field">
+            <div class="info-label">Product Type</div>
+            <select class="info-select" id="inf-prod-type">
+              <option value="">— 選擇 —</option>
+              <option>QD-OLED</option>
+              <option>OLED</option>
+              <option>IPS LCD</option>
+              <option>VA LCD</option>
+              <option>Mini-LED</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="info-field">
+            <div class="info-label">Current Stage</div>
+            <select class="info-select" id="inf-stage">
+              <option value="">— 選擇 —</option>
+              <option>RFQ</option>
+              <option>Award</option>
+              <option>KO</option>
+              <option>DVT</option>
+              <option>SIT</option>
+              <option>SVT</option>
+              <option>SoVP</option>
+              <option>MP</option>
+            </select>
+          </div>
+          <div class="info-field">
+            <div class="info-label">MP Target Date</div>
+            <input class="info-input" id="inf-mp-target" placeholder="2027/01/06">
+          </div>
+          <div class="info-field">
+            <div class="info-label">Target Market</div>
+            <input class="info-input" id="inf-market" placeholder="WW / NA / EU / CN">
+          </div>
+          <div class="info-field wide">
+            <div class="info-label">備註</div>
+            <textarea class="info-textarea" id="inf-notes" placeholder="專案備註、特殊需求..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel Info -->
+      <div class="info-section">
+        <div class="info-section-hdr" onclick="toggleInfoSection('sec-panel')">
+          <span class="info-section-title">面板資訊</span>
+          <span style="font-size:9px;color:#1e5a7a" id="sec-panel-tog">▼</span>
+        </div>
+        <div class="info-section-body" id="sec-panel">
+          <div class="info-field">
+            <div class="info-label">Panel Vendor</div>
+            <select class="info-select" id="inf-panel-vendor">
+              <option value="">— 選擇 —</option>
+              <option>SDC</option>
+              <option>BOE</option>
+              <option>AUO</option>
+              <option>LGD</option>
+              <option>CSOT</option>
+              <option>Innolux</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="info-field">
+            <div class="info-label">Panel Model</div>
+            <input class="info-input" id="inf-panel-model" placeholder="QMC315AJ02-D01">
+          </div>
+          <div class="info-field">
+            <div class="info-label">Panel Type</div>
+            <select class="info-select" id="inf-panel-type">
+              <option value="">— 選擇 —</option>
+              <option>OC (整模組)</option>
+              <option>Cell only (LCD)</option>
+            </select>
+          </div>
+          <div class="info-field">
+            <div class="info-label">Spec Freeze Status</div>
+            <select class="info-select" id="inf-spec-status">
+              <option value="">— 選擇 —</option>
+              <option>Frozen</option>
+              <option>Preliminary</option>
+              <option>TBD</option>
+            </select>
+          </div>
+          <div class="info-field wide">
+            <div class="info-label">Panel ETD / ETA（WS · ES · CS · MP）</div>
+            <div class="panel-etd-row">
+              <div class="info-field">
+                <div class="info-label">WS ETD/ETA</div>
+                <input class="info-input" id="inf-ws" placeholder="2026/4/13">
+              </div>
+              <div class="info-field">
+                <div class="info-label">ES ETD/ETA</div>
+                <input class="info-input" id="inf-es" placeholder="2026/7/14">
+              </div>
+              <div class="info-field">
+                <div class="info-label">CS ETD/ETA</div>
+                <input class="info-input" id="inf-cs" placeholder="2026/9/15">
+              </div>
+              <div class="info-field">
+                <div class="info-label">MP ETD/ETA</div>
+                <input class="info-input" id="inf-mp" placeholder="2026/12/2">
+              </div>
+            </div>
+          </div>
+          <div class="info-field wide">
+            <div class="info-label">Panel 備註（改期風險、Spec open items...）</div>
+            <textarea class="info-textarea" id="inf-panel-notes" placeholder="例：ES ETD 原 7/14，廠商告知可能延至 7/21。Power Consumption TBD 待確認。"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team & Contacts -->
+      <div class="info-section">
+        <div class="info-section-hdr" onclick="toggleInfoSection('sec-team')">
+          <span class="info-section-title">關係人 / Team</span>
+          <span style="font-size:9px;color:#1e5a7a" id="sec-team-tog">▼</span>
+        </div>
+        <div class="info-section-body" id="sec-team">
+          <div class="info-field">
+            <div class="info-label">PM（TPV）</div>
+            <input class="info-input" id="inf-pm" placeholder="你的名字">
+          </div>
+          <div class="info-field">
+            <div class="info-label">ME（TPV）</div>
+            <input class="info-input" id="inf-me" placeholder="">
+          </div>
+          <div class="info-field">
+            <div class="info-label">EE（TPV）</div>
+            <input class="info-input" id="inf-ee" placeholder="">
+          </div>
+          <div class="info-field">
+            <div class="info-label">LCM（TPV）</div>
+            <input class="info-input" id="inf-lcm" placeholder="">
+          </div>
+          <div class="info-field">
+            <div class="info-label">ID（TPV）</div>
+            <input class="info-input" id="inf-id-contact" placeholder="">
+          </div>
+          <div class="info-field">
+            <div class="info-label">SW（TPV）</div>
+            <input class="info-input" id="inf-sw" placeholder="">
+          </div>
+          <div class="info-field">
+            <div class="info-label">LNV PM</div>
+            <input class="info-input" id="inf-lnv-pm" placeholder="">
+          </div>
+          <div class="info-field">
+            <div class="info-label">LNV ME</div>
+            <input class="info-input" id="inf-lnv-me" placeholder="">
+          </div>
+          <div class="info-field">
+            <div class="info-label">Panel Vendor Contact</div>
+            <input class="info-input" id="inf-vendor-contact" placeholder="SDC Miller Chou">
+          </div>
+          <div class="info-field">
+            <div class="info-label">Cert Lab Contact</div>
+            <input class="info-input" id="inf-cert-contact" placeholder="">
+          </div>
+        </div>
+      </div>
+
+      <!-- Version History -->
+      <div class="info-section">
+        <div class="info-section-hdr" onclick="toggleInfoSection('sec-ver')">
+          <span class="info-section-title">版本記錄</span>
+          <span style="font-size:9px;color:#1e5a7a" id="sec-ver-tog">▼</span>
+        </div>
+        <div class="info-section-body" id="sec-ver">
+          <div class="info-field">
+            <div class="info-label">SCH 版本</div>
+            <input class="info-input" id="inf-sch-ver" placeholder="v3 / 0520">
+          </div>
+          <div class="info-field">
+            <div class="info-label">SCH 更新日期</div>
+            <input class="info-input" id="inf-sch-date" placeholder="2026/05/20">
+          </div>
+          <div class="info-field">
+            <div class="info-label">MRD 版本</div>
+            <input class="info-input" id="inf-mrd-ver" placeholder="V1.4">
+          </div>
+          <div class="info-field">
+            <div class="info-label">MRD 更新日期</div>
+            <input class="info-input" id="inf-mrd-date" placeholder="2026/04/14">
+          </div>
+        </div>
+      </div>
+
+      <!-- Update Log -->
+      <div class="info-section">
+        <div class="info-section-hdr" onclick="toggleInfoSection('sec-log')">
+          <span class="info-section-title">Update Log</span>
+          <span style="font-size:9px;color:#1e5a7a" id="sec-log-tog">▼</span>
+        </div>
+        <div id="sec-log">
+          <div class="log-list" id="logList"></div>
+          <div class="log-add-row">
+            <input class="info-input" id="logDate" style="width:100px;flex-shrink:0" placeholder="日期">
+            <select class="info-select" id="logCat" style="width:100px;flex-shrink:0">
+              <option value="Panel">Panel</option>
+              <option value="Schedule">Schedule</option>
+              <option value="Cert">Cert</option>
+              <option value="Spec">Spec</option>
+              <option value="Other">Other</option>
+            </select>
+            <input class="info-input" id="logText" placeholder="更新內容...">
+            <button class="btn" onclick="addLogEntry()" style="flex-shrink:0;color:#34d399;border-color:#059669;white-space:nowrap">＋ 新增</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-save-bar">
+        <span class="info-saved" id="infoSavedAt"></span>
+        <button class="btn" onclick="saveInfoFields()" style="color:#34d399;border-color:#059669">💾 儲存 Info</button>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <!-- API Key Modal -->
@@ -816,6 +1093,10 @@ let STATE = {
   barPositions: {},
   floatMap: {},
   mrdResult: null,
+  _infoData: {},
+  _logEntries: [],
+  _schFilename: '',
+  _mrdFilename: '',
   longestPath: new Set(),
   mpPath: new Set(),
   distMap: {},
@@ -1591,11 +1872,12 @@ function drawConnections() {
 // TAB SWITCHING
 // ─────────────────────────────────────────────
 function switchTab(name) {
-  ['gantt','sch','mrd','cert'].forEach(t => {
+  ['gantt','sch','mrd','cert','info'].forEach(t => {
     const tabEl = document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)); if(tabEl) tabEl.className = 'tab' + (t===name?' active':'');
     const panEl = document.getElementById('panel'+t.charAt(0).toUpperCase()+t.slice(1)); if(panEl) panEl.className = 'tab-panel' + (t===name?' active':'');
   });
   if (name === 'sch') renderSchTable();
+  if (name === 'info') { loadInfoFields(); initLogDateField(); }
   if (name === 'cert') setTimeout(() => {
     if (STATE.mrdResult) renderDynCertTree(STATE.mrdResult);
     else initCertTree();
@@ -2304,7 +2586,7 @@ function exportExcel() {
 
   const s4 = [
     ['Project',          proj],
-    ['App Version',      'V0.013'],
+    ['App Version',      'V0.014'],
     ['Export Date',      today],
 
     [''],
@@ -2880,6 +3162,135 @@ function initApp() {
 
 // ── Init ──
 document.addEventListener("DOMContentLoaded", initApp);
+
+// ─────────────────────────────────────────────
+// PROJECT INFO FIELDS
+// ─────────────────────────────────────────────
+const INFO_FIELDS = [
+  'inf-proj-name','inf-proj-code','inf-prod-type','inf-stage','inf-mp-target','inf-market','inf-notes',
+  'inf-panel-vendor','inf-panel-model','inf-panel-type','inf-spec-status',
+  'inf-ws','inf-es','inf-cs','inf-mp',
+  'inf-panel-notes',
+  'inf-pm','inf-me','inf-ee','inf-lcm','inf-id-contact','inf-sw',
+  'inf-lnv-pm','inf-lnv-me','inf-vendor-contact','inf-cert-contact',
+  'inf-sch-ver','inf-sch-date','inf-mrd-ver','inf-mrd-date'
+];
+
+function toggleInfoSection(id) {
+  const body = document.getElementById(id);
+  const tog  = document.getElementById(id + '-tog');
+  if (!body) return;
+  const isHidden = body.classList.toggle('hidden');
+  if (tog) tog.textContent = isHidden ? '▶' : '▼';
+}
+
+function getInfoData() {
+  const data = {};
+  INFO_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value || '';
+  });
+  return data;
+}
+
+function setInfoData(data) {
+  if (!data) return;
+  INFO_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && data[id] !== undefined) el.value = data[id];
+  });
+}
+
+function saveInfoFields() {
+  if (!STATE.tasks.length) return;
+  STATE._infoData = getInfoData();
+  STATE._logEntries = STATE._logEntries || [];
+  saveProjectNow(false);
+  const el = document.getElementById('infoSavedAt');
+  if (el) el.textContent = `💾 已儲存 ${new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}`;
+}
+
+function loadInfoFields() {
+  if (STATE._infoData) setInfoData(STATE._infoData);
+  renderLogList();
+  // auto-fill project name from appTitle if empty
+  const nameEl = document.getElementById('inf-proj-name');
+  if (nameEl && !nameEl.value) {
+    const titleEl = document.getElementById('appTitle');
+    if (titleEl) nameEl.value = titleEl.textContent;
+  }
+  // auto-fill MP target from last milestone if empty
+  const mpEl = document.getElementById('inf-mp-target');
+  if (mpEl && !mpEl.value && STATE.tasks.length) {
+    const lastMs = STATE.tasks.filter(t=>t.ms).sort((a,b)=>b.finishDate-a.finishDate)[0];
+    if (lastMs) mpEl.value = lastMs.s;
+  }
+  // auto-fill SCH update date
+  const schDateEl = document.getElementById('inf-sch-date');
+  if (schDateEl && !schDateEl.value) schDateEl.value = fmtDate(TODAY);
+}
+
+function initLogDateField() {
+  const el = document.getElementById('logDate');
+  if (el && !el.value) el.value = fmtDate(TODAY);
+}
+
+// ── Update Log ──
+function addLogEntry() {
+  const date = document.getElementById('logDate').value.trim() || fmtDate(TODAY);
+  const cat  = document.getElementById('logCat').value || 'Other';
+  const text = document.getElementById('logText').value.trim();
+  if (!text) return;
+
+  STATE._logEntries = STATE._logEntries || [];
+  STATE._logEntries.unshift({ date, cat, text, id: Date.now() });
+  document.getElementById('logText').value = '';
+  renderLogList();
+  saveInfoFields();
+}
+
+function deleteLogEntry(id) {
+  STATE._logEntries = (STATE._logEntries || []).filter(e => e.id !== id);
+  renderLogList();
+  saveInfoFields();
+}
+
+function renderLogList() {
+  const list = document.getElementById('logList');
+  if (!list) return;
+  const entries = STATE._logEntries || [];
+  if (!entries.length) {
+    list.innerHTML = '<div style="padding:12px;text-align:center;font-size:10px;color:#1e5a7a">尚無記錄 — 在下方新增第一筆</div>';
+    return;
+  }
+  list.innerHTML = entries.map(e => {
+    const catClass = 'log-cat-' + (e.cat||'other').toLowerCase();
+    return `<div class="log-row">
+      <div class="log-date">${escH(e.date)}</div>
+      <span class="log-cat ${catClass}">${escH(e.cat)}</span>
+      <div class="log-text">${escH(e.text)}</div>
+      <div class="log-del" onclick="deleteLogEntry(${e.id})" title="刪除">✕</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Persist info with project ──
+// Hook into stateToProject
+const _origStateToProject = stateToProject;
+function stateToProject(name, schFilename, mrdFilename) {
+  const proj = _origStateToProject(name, schFilename, mrdFilename);
+  proj.infoData    = STATE._infoData    || {};
+  proj.logEntries  = STATE._logEntries  || [];
+  return proj;
+}
+
+const _origProjectToState = projectToState;
+function projectToState(proj) {
+  _origProjectToState(proj);
+  STATE._infoData   = proj.infoData   || {};
+  STATE._logEntries = proj.logEntries || [];
+}
+
 </script>
 </body>
 </html>
