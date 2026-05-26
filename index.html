@@ -535,7 +535,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
   <div class="hub-actions">
     <button class="hub-btn hub-btn-primary" onclick="startNewProject()">＋ 新建專案</button>
     <button class="hub-btn hub-btn-sec" onclick="importProject()">↑ 載入 .psmv</button>
-    <input type="file" id="importInput" accept=".psmv,.json" style="display:none" onchange="handleImport(event)">
+    <input type="file" id="importInput" accept=".psmv,.json,application/json,text/plain" style="display:none" onchange="handleImport(event)">
   </div>
 
   <div class="hub-projects">
