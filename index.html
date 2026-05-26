@@ -509,7 +509,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="hub-title">Project Schedule Manager</div>
     <div class="hub-sub">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.019</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.020</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -545,7 +545,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="upload-title">Project Schedule Viewer</div>
     <div class="upload-sub" style="margin-top:4px">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.019</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.020</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -2520,53 +2520,121 @@ async function analyzeMrd() {
   const content = document.getElementById('mrdContent');
   content.innerHTML = `<div class="mrd-loading">
     <div class="mrd-spinner"></div>
-    <div class="mrd-loading-text">AI 分析 MRD 中，請稍候...</div>
+    <div class="mrd-loading-text">整合專案資訊，進行 AI 深度分析中...</div>
   </div>`;
 
-  const prompt = `你是資深顯示器PM，分析MRD並規劃認證流程。回傳JSON，不要其他文字。
+  // ── Build project context from STATE ──
+  const info   = STATE._infoData  || {};
+  const logs   = STATE._logEntries || [];
+  const today  = fmtDate(TODAY);
 
-MRD：
-${mrdRawText}
+  // Key milestones from SCH
+  const msTasks = STATE.tasks.filter(t => t.ms).sort((a,b) => a.startDate - b.startDate);
+  const msLines = msTasks.map(t => {
+    const diff = Math.round((t.startDate - TODAY) / 86400000);
+    const status = diff < 0 ? `已完成（${Math.abs(diff)}天前）` : `還有 ${diff} 天（${t.s}）`;
+    return `  ${t.n}：${status}`;
+  }).join('\n');
 
-trigger值：panel_spec/dvt_pcba/sit_build/svt_build/sovp/cb_done
-depends_on：依賴的認證name，無則null
-lead_time_weeks：整數
+  // Find key milestone dates
+  const findMs = (regex) => {
+    const t = STATE.tasks.find(x => regex.test(x.n));
+    return t ? t.s : '未定';
+  };
+  const sitBuild = findMs(/sit.*build|build.*t1|t1.*sample/i);
+  const dvtExit  = findMs(/dvt.*exit/i);
+  const svtExit  = findMs(/svt.*exit/i);
+  const sovp     = findMs(/sovp|build.*sovp/i);
+  const mpReady  = findMs(/mp.*ready|ss.*lssc/i);
 
-回傳：
-{
-  "product": {
-    "name": "產品名稱",
-    "panel_type": "面板類型（如 QD-OLED、IPS、VA）",
-    "resolution": "解析度",
-    "refresh_rate": "更新率",
-    "size": "尺寸",
-    "mp_target": "MP 目標日期",
-    "region": "銷售地區"
-  },
-  "panel_spec": {
-    "supplier": "面板供應商",
-    "model": "面板型號（如有）",
-    "brightness": "亮度",
-    "contrast": "對比度",
-    "key_risks": ["Spec 尚未凍結的項目或風險"]
-  },
-  "certifications": [
-    {
-      "name": "認證名稱（簡短，如 CB、FCC、CCC）",
-      "region": "適用地區",
-      "category": "Safety/EMI/Energy/Ergonomics/Logo/Other",
-      "risk_level": "high/med/low",
-      "lead_time_weeks": 6,
-      "trigger": "sit_build",
-      "depends_on": null,
-      "notes": "備註（週期長、特殊需求等）"
-    }
-  ],
-  "risks": [
-    { "level": "high/med/low", "item": "風險項目描述" }
-  ],
-  "key_documents": ["需要準備的重要文件清單"]
-}`;
+  // PROJECT INFO known data
+  const knownInfo = [
+    info['inf-proj-name']    ? `專案名稱：${info['inf-proj-name']}`        : '',
+    info['inf-panel-vendor'] ? `面板供應商：${info['inf-panel-vendor']}`   : '',
+    info['inf-panel-model']  ? `面板型號：${info['inf-panel-model']}（已確認，優先使用此資訊）` : '',
+    info['inf-panel-type']   ? `面板類型：${info['inf-panel-type']}`       : '',
+    info['inf-spec-status']  ? `Spec 狀態：${info['inf-spec-status']}`     : '',
+    info['inf-ws']           ? `WS ETD/ETA：${info['inf-ws']}`            : '',
+    info['inf-es']           ? `ES ETD/ETA：${info['inf-es']}`            : '',
+    info['inf-cs']           ? `CS ETD/ETA：${info['inf-cs']}`            : '',
+    info['inf-mp']           ? `MP ETD/ETA：${info['inf-mp']}`            : '',
+    info['inf-panel-notes']  ? `Panel 備註：${info['inf-panel-notes']}`   : '',
+    info['inf-market']       ? `目標市場：${info['inf-market']}`           : '',
+  ].filter(Boolean).join('\n');
+
+  // Recent update log (last 5 entries)
+  const recentLogs = logs.slice(0, 5).map(l =>
+    `  [${l.date}][${l.cat}] ${l.text}`
+  ).join('\n');
+
+  // Team contacts
+  const members = (STATE._members || []).filter(m => m.name);
+  const teamStr = members.slice(0, 8).map(m =>
+    `  ${m.fn}：${m.name}${m.email ? ` (${m.email})` : ''}`
+  ).join('\n');
+
+  // ── Build project context (no nested template literals) ──
+  const knownInfoBlock = knownInfo
+    ? '【PROJECT INFO 已知資訊（優先採用）】\n' + knownInfo : '';
+  const logsBlock = recentLogs
+    ? '【Update Log 最近記錄】\n' + recentLogs : '';
+  const teamBlock = teamStr
+    ? '【團隊窗口】\n' + teamStr : '';
+
+  const projectContext = [
+    '【今天日期】' + today,
+    '【SCH 關鍵里程碑】',
+    '  DVT Exit：' + dvtExit,
+    '  SIT Build T1：' + sitBuild + '（CB 必須在此日送出）',
+    '  SVT Exit：' + svtExit,
+    '  SoVP：' + sovp,
+    '  MP Ready：' + mpReady,
+    '【完整里程碑清單】',
+    msLines,
+    knownInfoBlock,
+    logsBlock,
+    teamBlock,
+  ].filter(Boolean).join('\n');
+
+  const schemaExample = JSON.stringify({
+    product: {
+      name: '產品名稱', panel_type: '面板類型', resolution: '解析度',
+      refresh_rate: '更新率', size: '尺寸', mp_target: 'MP目標日期',
+      region: '銷售地區', panel_model: '面板型號（優先用PROJECT INFO的值）'
+    },
+    panel_spec: {
+      supplier: '面板供應商', model: '面板型號', brightness: '亮度', contrast: '對比度',
+      key_risks: ['有具體日期的Spec風險，需在DVT前確認']
+    },
+    certifications: [{
+      name: 'CB', region: 'International', category: 'Safety',
+      risk_level: 'high', lead_time_weeks: 6,
+      trigger: 'sit_build', depends_on: null,
+      deadline: '必須最晚在SIT Build日（' + sitBuild + '）送出',
+      notes: 'IEC62368，6週，完成後觸發依賴認證，不能晚送'
+    }],
+    risks: [{
+      level: 'high',
+      item: 'SABS需CB完成後3-6個月，CB預計' + sitBuild + '+42天完成，比MP ' + mpReady + '晚，需與LNV確認',
+      deadline: '根據實際計算填入具體日期',
+      action: '立即與LNV PM確認SABS風險是否接受'
+    }],
+    key_documents: ['具體文件名稱']
+  }, null, 2);
+
+  const prompt = '你是資深顯示器PM，熟悉認證流程與NPI開發。根據MRD與以下專案現況，給出有具體日期的分析。回傳JSON，不要其他文字。\n\n'
+    + projectContext + '\n\n'
+    + '【MRD 文件】\n' + mrdRawText + '\n\n'
+    + '重要指示：\n'
+    + '1. product.panel_model 若PROJECT INFO已有面板型號，直接使用\n'
+    + '2. risks必須包含具體日期，格式：CB必須在' + sitBuild + '前送出，距今X天\n'
+    + '3. certifications.notes必須說明最晚觸發日期\n'
+    + '4. 根據今天' + today + '和各里程碑計算實際天數，不要說儘早或提前\n'
+    + '5. trigger值：panel_spec/dvt_pcba/sit_build/svt_build/sovp/cb_done\n'
+    + '6. depends_on：填依賴的認證name，無則null\n'
+    + '7. lead_time_weeks：整數\n\n'
+    + '回傳格式：\n' + schemaExample;
+
 
   try {
     const res = await fetch('https://mrd-proxy.jjqwekimo.workers.dev', {
@@ -2693,8 +2761,12 @@ function renderMrdResult(r) {
       items.forEach(c => {
         html += `<div class="cert-item ${c.risk_level==='high'?'risk':''}">
           <div class="cert-region">${escH(c.region||'—')}</div>
-          <div class="cert-name">${escH(c.name)}</div>
-          ${c.notes ? `<div style="font-size:9px;color:#1e5a7a;flex:1">${escH(c.notes)}</div>` : ''}
+          <div class="cert-name" style="flex:1">
+            ${escH(c.name)}
+            ${c.lead_time_weeks ? `<span style="font-size:8px;color:#1e5a7a;margin-left:4px">${c.lead_time_weeks}wk</span>` : ''}
+            ${c.deadline ? `<div style="font-size:8px;color:#fbbf24;margin-top:2px">⏰ ${escH(c.deadline)}</div>` : ''}
+          </div>
+          ${c.notes ? `<div style="font-size:9px;color:#5a9aba;max-width:200px">${escH(c.notes)}</div>` : ''}
           <div class="cert-risk ${c.risk_level||'low'}">${c.risk_level||'low'}</div>
         </div>`;
       });
@@ -2707,7 +2779,11 @@ function renderMrdResult(r) {
   if (risks.length) {
     html += '<div class="mrd-section"><div class="mrd-section-title">專案風險</div><div class="risk-list">';
     risks.forEach(r => {
-      html += `<div class="risk-item ${r.level||'low'}">${escH(r.item||'')}</div>`;
+      const deadlineStr = r.deadline
+        ? `<div style="font-size:9px;color:#fbbf24;margin-top:3px">⏰ 截止：${escH(r.deadline)}</div>` : '';
+      const actionStr = r.action
+        ? `<div style="font-size:9px;color:#34d399;margin-top:2px">→ ${escH(r.action)}</div>` : '';
+      html += `<div class="risk-item ${r.level||'low'}">${escH(r.item||'')}${deadlineStr}${actionStr}</div>`;
     });
     html += '</div></div>';
   }
@@ -2882,7 +2958,7 @@ function exportExcel() {
 
   const s4 = [
     ['Project',          proj],
-    ['App Version',      'V0.019'],
+    ['App Version',      'V0.020'],
     ['Export Date',      today],
 
     [''],
@@ -3352,7 +3428,7 @@ function showHub() {
 function buildChangelogHTML() {
   return `
     <div class="cl-entry">
-      <div class="cl-ver"><span class="cl-ver-num">V0.019</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+      <div class="cl-ver"><span class="cl-ver-num">V0.020</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
       <ul class="cl-items">
         <li class="cl-item">Project Hub：專案卡片首頁，多專案管理</li>
         <li class="cl-item">localStorage 自動儲存（每60秒），開啟App自動還原</li>
