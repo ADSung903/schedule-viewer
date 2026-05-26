@@ -1697,6 +1697,8 @@ function showMainApp(filename, tasks) {
   document.getElementById('appSub').textContent = `${tasks.length} tasks · ${STATE.lanes.length} lanes · ${fmtDate(STATE.projectStart)} — ${fmtDate(STATE.projectEnd)}`;
   const td = fmtDateShort(TODAY);
   document.getElementById('todayBadge').textContent = `▶ ${td}`;
+  // mobile init (direct call, no override needed)
+  setTimeout(() => { if (typeof isMobile === 'function' && isMobile()) initMobileMode(); }, 100);
 }
 
 function fmtDateShort(d) {
@@ -1771,6 +1773,12 @@ function buildStatusPanel() {
 
   // ── Action suggestion ──
   buildActionSuggestion(futureMilestones, elapsed, totalDays, pct);
+
+  // ── Mobile dashboard update ──
+  if (typeof isMobile === 'function' && isMobile() &&
+      typeof _mobView !== 'undefined' && _mobView === 'dash') {
+    setTimeout(() => { if (typeof buildMobileDash === 'function') buildMobileDash(); }, 50);
+  }
 }
 
 function matchStageRule(milestoneName) {
@@ -4277,6 +4285,7 @@ function buildMobileDash() {
 // ── Init mobile on load and resize ──
 function initMobileMode() {
   if (!isMobile()) return;
+  if (typeof _mobView === 'undefined') return;
   // show mobile dashboard by default
   const dash = document.getElementById('mobileDash');
   const tabs = document.querySelector('.tabs');
@@ -4285,22 +4294,6 @@ function initMobileMode() {
   document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
   // build dash if project loaded
   if (STATE.tasks.length) buildMobileDash();
-}
-
-// Hook into showMainApp
-const _origShowMainApp = showMainApp;
-function showMainApp(filename, tasks) {
-  _origShowMainApp(filename, tasks);
-  if (isMobile()) initMobileMode();
-}
-
-// Hook into buildStatusPanel — also update mobile
-const _origBuildStatus = buildStatusPanel;
-function buildStatusPanel() {
-  _origBuildStatus();
-  if (isMobile() && STATE.tasks.length && _mobView === 'dash') {
-    buildMobileDash();
-  }
 }
 
 // Resize handler
