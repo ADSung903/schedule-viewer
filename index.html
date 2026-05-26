@@ -364,6 +364,123 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 .member-edit-grid .info-field.wide{grid-column:1/-1}
 .member-edit-btns{display:flex;gap:6px;justify-content:flex-end}
 
+
+/* ════════════════════════════════════════════
+   MOBILE MODE (< 768px)
+   ════════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* hide desktop gantt controls */
+  .controls .btn:not(#btnMobile):not(#btnMobileGantt){ display:none }
+  #btnM, #btnW, #btnSP, #btnCP { display:none !important }
+
+  /* compact header */
+  .header { padding:8px 0 8px; gap:6px }
+  .title   { font-size:11px }
+  .subtitle{ font-size:9px }
+  #appSavedAt { font-size:8px }
+
+  /* hide desktop panels when mobile dashboard active */
+  .mob-hidden { display:none !important }
+
+  /* show mobile elements */
+  .mob-only { display:block !important }
+  .mob-flex { display:flex  !important }
+}
+
+@media (min-width: 768px) {
+  .mob-only { display:none !important }
+  .mob-flex { display:none !important }
+  #mobileDash { display:none !important }
+}
+
+/* ── Mobile Dashboard ── */
+#mobileDash {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.mob-card {
+  background: #0a1525;
+  border: 1px solid #0d2d4a;
+  border-radius: 8px;
+  padding: 12px 14px;
+  position: relative;
+  overflow: hidden;
+}
+.mob-card::before {
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+}
+.mob-card.blue::before  { background:#0ea5e9;box-shadow:0 0 6px #0ea5e9 }
+.mob-card.green::before { background:#10b981;box-shadow:0 0 6px #10b981 }
+.mob-card.amber::before { background:#f59e0b;box-shadow:0 0 6px #f59e0b }
+.mob-card.red::before   { background:#ef4444;box-shadow:0 0 6px #ef4444 }
+.mob-card.purple::before{ background:#a78bfa;box-shadow:0 0 6px #a78bfa }
+
+.mob-card-label { font-size:8px;color:#1e5a7a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px }
+.mob-card-val   { font-size:22px;font-weight:500;color:#f0f8ff;line-height:1 }
+.mob-card-val.amber  { color:#fbbf24;text-shadow:0 0 8px #f59e0b60 }
+.mob-card-val.green  { color:#34d399 }
+.mob-card-val.red    { color:#f87171 }
+.mob-card-sub   { font-size:10px;color:#5a9aba;margin-top:4px }
+
+.mob-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px }
+
+/* next milestone card */
+.mob-next { background:#06101a;border:1px solid #0d3a5a;border-radius:8px;padding:12px 14px }
+.mob-next-label { font-size:8px;color:#1e5a7a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:5px }
+.mob-next-name  { font-size:14px;font-weight:500;color:#fbbf24;margin-bottom:3px }
+.mob-next-date  { font-size:11px;color:#5a9aba }
+.mob-next-diff  { font-size:20px;font-weight:500;margin-top:6px }
+
+/* action checklist */
+.mob-checklist  { background:#06101a;border:1px solid #0d2d4a;border-radius:8px;padding:12px 14px }
+.mob-cl-label   { font-size:8px;color:#1e5a7a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px }
+.mob-cl-item    { display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #091828;font-size:11px;color:#8ab4cc;line-height:1.4 }
+.mob-cl-item:last-child { border:none }
+.mob-cl-dot     { width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;background:#1e5a7a }
+.mob-cl-dot.urgent { background:#ef4444;box-shadow:0 0 4px #ef4444 }
+
+/* milestone timeline */
+.mob-timeline   { background:#060a10;border:1px solid #0d2d4a;border-radius:8px;overflow:hidden }
+.mob-tl-header  { display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#07090f;border-bottom:1px solid #0d2d4a }
+.mob-tl-title   { font-size:10px;font-weight:500;color:#7dd3fc;letter-spacing:0.06em;text-transform:uppercase }
+.mob-tl-scroll  { overflow-x:auto;padding:12px;-webkit-overflow-scrolling:touch }
+.mob-tl-inner   { display:flex;gap:0;min-width:max-content;position:relative;padding-bottom:8px }
+.mob-tl-line    { position:absolute;top:10px;left:0;right:0;height:1px;background:#0d2d4a;z-index:0 }
+.mob-ms-node    { display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;z-index:1;min-width:80px }
+.mob-ms-diamond { width:14px;height:14px;transform:rotate(45deg);flex-shrink:0 }
+.mob-ms-diamond.past   { background:#1e5a7a;border:1px solid #3a7a9a }
+.mob-ms-diamond.today  { background:#ef4444;border:1px solid #ef4444;box-shadow:0 0 8px #ef4444 }
+.mob-ms-diamond.soon   { background:#f59e0b;border:1px solid #f59e0b;animation:dpulse 1.5s ease-in-out infinite }
+.mob-ms-diamond.future { background:#0a1828;border:1px solid #0d2d4a }
+.mob-ms-diamond.cp     { box-shadow:0 0 6px currentColor }
+.mob-ms-name    { font-size:8px;color:#5a8aaa;text-align:center;max-width:72px;line-height:1.3;word-break:keep-all }
+.mob-ms-name.soon   { color:#fbbf24 }
+.mob-ms-name.past   { color:#1e5a7a }
+.mob-ms-date    { font-size:7px;color:#1e5a7a;text-align:center }
+.mob-ms-diff    { font-size:7px;color:#3a7a9a;text-align:center }
+
+/* bottom nav */
+.mob-nav { display:none;position:fixed;bottom:0;left:0;right:0;background:#06080f;border-top:1px solid #0d2d4a;z-index:50;padding:6px 0 max(6px,env(safe-area-inset-bottom)) }
+.mob-nav-inner { display:flex;justify-content:space-around }
+.mob-nav-btn   { display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 12px;cursor:pointer;border:none;background:transparent;color:#3a7a9a;font-size:9px;letter-spacing:0.04em;text-transform:uppercase }
+.mob-nav-btn.active { color:#38bdf8 }
+.mob-nav-btn-icon { font-size:16px;line-height:1 }
+
+@media (max-width: 767px) {
+  .mob-nav { display:block }
+  #app { padding-bottom: 64px }
+  /* compact status cards on mobile */
+  .status-panel { grid-template-columns:1fr 1fr;gap:6px }
+  .sc-val { font-size:16px }
+  .sc-label { font-size:8px }
+  /* slim gantt for mobile timeline */
+  .gantt-wrap { max-height:45vh }
+}
+
 /* ── Parse log ── */
 #parseLog{display:none;margin-top:8px;background:#06101a;border:1px solid #0d2d4a;border-radius:4px;padding:10px;font-size:10px;color:#3a7a9a;max-height:120px;overflow-y:auto}
 .log-ok{color:#34d399}.log-warn{color:#fbbf24}.log-err{color:#f87171}
@@ -379,7 +496,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="hub-title">Project Schedule Manager</div>
     <div class="hub-sub">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.016</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.018</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -415,7 +532,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="upload-title">Project Schedule Viewer</div>
     <div class="upload-sub" style="margin-top:4px">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.016</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.018</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -597,6 +714,52 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
         <div class="action-label">下一步行動建議</div>
         <div class="action-text" id="actionText">—</div>
         <div class="action-chips" id="actionChips"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Dashboard -->
+  <div id="mobileDash">
+    <!-- 2x2 stat grid -->
+    <div class="mob-grid">
+      <div class="mob-card blue">
+        <div class="mob-card-label">進度</div>
+        <div class="mob-card-val amber" id="mob-pct">—</div>
+        <div class="mob-card-sub" id="mob-day">—</div>
+      </div>
+      <div class="mob-card green">
+        <div class="mob-card-label">當前階段</div>
+        <div class="mob-card-val green" style="font-size:13px" id="mob-phase">—</div>
+        <div class="mob-card-sub" id="mob-phase-sub">—</div>
+      </div>
+      <div class="mob-card red">
+        <div class="mob-card-label">已過里程碑</div>
+        <div class="mob-card-val" id="mob-late">—</div>
+        <div class="mob-card-sub">milestones</div>
+      </div>
+      <div class="mob-card purple">
+        <div class="mob-card-label">MP 倒數</div>
+        <div class="mob-card-val" style="font-size:16px;color:#c4b5fd" id="mob-mp">—</div>
+        <div class="mob-card-sub" id="mob-mp-date">—</div>
+      </div>
+    </div>
+
+    <!-- Next milestone -->
+    <div class="mob-next" id="mobNextMs"></div>
+
+    <!-- PM checklist -->
+    <div class="mob-checklist" id="mobChecklist" style="display:none"></div>
+
+    <!-- Milestone timeline -->
+    <div class="mob-timeline">
+      <div class="mob-tl-header">
+        <span class="mob-tl-title">里程碑時程</span>
+        <span style="font-size:9px;color:#1e5a7a">← 左右滑動</span>
+      </div>
+      <div class="mob-tl-scroll">
+        <div class="mob-tl-inner" id="mobTimeline">
+          <div class="mob-tl-line"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1047,6 +1210,24 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 
     </div>
   </div>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mob-nav" id="mobNav">
+    <div class="mob-nav-inner">
+      <button class="mob-nav-btn active" id="mobn-dash" onclick="mobSwitch('dash')">
+        <span class="mob-nav-btn-icon">◉</span>儀表板
+      </button>
+      <button class="mob-nav-btn" id="mobn-gantt" onclick="mobSwitch('gantt')">
+        <span class="mob-nav-btn-icon">⬡</span>時程
+      </button>
+      <button class="mob-nav-btn" id="mobn-mrd" onclick="mobSwitch('mrd')">
+        <span class="mob-nav-btn-icon">◈</span>MRD
+      </button>
+      <button class="mob-nav-btn" id="mobn-info" onclick="mobSwitch('info')">
+        <span class="mob-nav-btn-icon">📁</span>資訊
+      </button>
+    </div>
+  </nav>
 
 </div>
 
@@ -1706,8 +1887,11 @@ function buildActionSuggestion(futureMilestones, elapsed, totalDays, pct) {
           // find member contact
           const member = (STATE._members||[]).find(m => m.fn === p.fn);
           const contact = member && member.name ? ` (${member.name})` : '';
+          const emailLink = member && member.email
+            ? ` <a href="mailto:${member.email}" style="color:#0ea5e9;font-size:9px;text-decoration:none" onclick="event.stopPropagation()">✉</a>`
+            : '';
           return `<div style="display:flex;align-items:flex-start;gap:5px;font-size:10px">
-            <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${fnColor}22;color:${fnColor};border:1px solid ${fnColor}40;flex-shrink:0;margin-top:1px">${escH(p.fn)}${escH(contact)}</span>
+            <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${fnColor}22;color:${fnColor};border:1px solid ${fnColor}40;flex-shrink:0;margin-top:1px">${escH(p.fn)}${escH(contact)}${emailLink}</span>
             <span style="color:#5a8aaa">${escH(p.item)}</span>
           </div>`;
         }).join('')}
@@ -2662,7 +2846,7 @@ function exportExcel() {
 
   const s4 = [
     ['Project',          proj],
-    ['App Version',      'V0.016'],
+    ['App Version',      'V0.018'],
     ['Export Date',      today],
 
     [''],
@@ -3132,7 +3316,7 @@ function showHub() {
 function buildChangelogHTML() {
   return `
     <div class="cl-entry">
-      <div class="cl-ver"><span class="cl-ver-num">V0.016</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+      <div class="cl-ver"><span class="cl-ver-num">V0.018</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
       <ul class="cl-items">
         <li class="cl-item">Project Hub：專案卡片首頁，多專案管理</li>
         <li class="cl-item">localStorage 自動儲存（每60秒），開啟App自動還原</li>
@@ -3827,6 +4011,7 @@ function renderMemberList() {
               <span class="member-name">${escH(displayName)}${tpeFq?`<span style="font-size:9px;color:#1e5a7a;font-weight:400"> · ${escH(tpeFq)}</span>`:''}</span>
               <span class="member-site ${siteCls}">${m.site}</span>
             </div>
+            ${m.email ? `<div style="margin-bottom:3px"><a href="mailto:${escH(m.email)}" style="font-size:10px;color:#0ea5e9;text-decoration:none" onclick="event.stopPropagation()">✉ ${escH(m.email)}</a></div>` : ''}
             <div class="member-desc">${escH(m.desc||'')}</div>
             <div class="member-phases">
               ${(m.phases||[]).map(p=>`<span class="mphase ${PHASE_COLORS[p]||''}">${PHASE_LABELS[p]||p}</span>`).join('')}
@@ -3892,6 +4077,10 @@ function editMember(id) {
         <input class="info-input" id="mef_fq_${id}" value="${escH(m.fq_name||'')}">
       </div>
       <div class="info-field wide">
+        <div class="info-label">Email</div>
+        <input class="info-input" id="mef_email_${id}" type="email" placeholder="name@tpv.com" value="${escH(m.email||'')}">
+      </div>
+      <div class="info-field wide">
         <div class="info-label">職責說明</div>
         <textarea class="info-textarea" id="mef_desc_${id}" style="min-height:48px">${escH(m.desc||'')}</textarea>
       </div>
@@ -3924,6 +4113,7 @@ function saveMember(id) {
     site:     document.getElementById('mef_site_'+id)?.value || 'TPE',
     tpe_name: document.getElementById('mef_tpe_'+id)?.value || '',
     fq_name:  document.getElementById('mef_fq_'+id)?.value || '',
+    email:    document.getElementById('mef_email_'+id)?.value || '',
     desc:     document.getElementById('mef_desc_'+id)?.value || '',
     phases:   PHASES.filter(p => document.getElementById(`mef_p_${id}_${p}`)?.checked),
   };
@@ -3950,6 +4140,175 @@ function addMember() {
   // scroll to bottom and open edit
   setTimeout(() => editMember(newId), 50);
 }
+
+
+// ═════════════════════════════════════════════
+// MOBILE MODE
+// ═════════════════════════════════════════════
+function isMobile() { return window.innerWidth < 768; }
+
+let _mobView = 'dash'; // 'dash' | 'gantt' | 'mrd' | 'info'
+
+function mobSwitch(view) {
+  _mobView = view;
+  // update nav buttons
+  ['dash','gantt','mrd','info'].forEach(v => {
+    const btn = document.getElementById('mobn-' + v);
+    if (btn) btn.className = 'mob-nav-btn' + (v === view ? ' active' : '');
+  });
+
+  const dash   = document.getElementById('mobileDash');
+  const tabs   = document.querySelector('.tabs');
+  const panels = document.querySelectorAll('.tab-panel');
+
+  if (view === 'dash') {
+    if (dash) dash.style.display = 'flex';
+    // hide tab content area
+    if (tabs) tabs.style.display = 'none';
+    panels.forEach(p => p.style.display = 'none');
+    buildMobileDash();
+  } else {
+    if (dash) dash.style.display = 'none';
+    if (tabs) tabs.style.display = 'flex';
+    // switch to the right tab
+    const tabMap = { gantt:'gantt', mrd:'mrd', info:'info' };
+    switchTab(tabMap[view] || 'gantt');
+  }
+}
+
+function buildMobileDash() {
+  if (!STATE.tasks.length) return;
+
+  const ps = STATE.projectStart, pe = STATE.projectEnd;
+  const totalDays = Math.max(1, Math.round((pe - ps) / 86400000));
+  const elapsed   = Math.round((TODAY - ps) / 86400000);
+  const pct = Math.max(0, Math.min(100, Math.round(elapsed / totalDays * 100)));
+
+  // ── stat cards ──
+  document.getElementById('mob-pct').textContent  = pct + '%';
+  document.getElementById('mob-pct').className    = 'mob-card-val ' + (pct < 30 ? 'amber' : 'green');
+  document.getElementById('mob-day').textContent  = `第${elapsed}天 / 共${totalDays}天`;
+
+  // current phase
+  let phase = '—', phaseSub = '';
+  STATE.lanes.forEach(lane => {
+    const dates = lane.tasks.map(t => [t.startDate, t.finishDate]).flat().filter(Boolean);
+    if (!dates.length) return;
+    const ls = new Date(Math.min(...dates)), lf = new Date(Math.max(...dates));
+    if (TODAY >= ls && TODAY <= lf) { phase = lane.label; phaseSub = '進行中'; }
+  });
+  document.getElementById('mob-phase').textContent     = phase.length > 10 ? phase.slice(0,10)+'…' : phase;
+  document.getElementById('mob-phase-sub').textContent = phaseSub;
+
+  // past milestones
+  const past = STATE.tasks.filter(t => t.ms && t.startDate < TODAY).length;
+  const lateEl = document.getElementById('mob-late');
+  lateEl.textContent = past;
+  lateEl.className   = 'mob-card-val ' + (past > 2 ? 'amber' : 'green');
+
+  // MP countdown
+  const lastMs = STATE.tasks.filter(t => t.ms).sort((a,b) => b.finishDate - a.finishDate)[0];
+  if (lastMs) {
+    const mpDays = Math.round((lastMs.finishDate - TODAY) / 86400000);
+    document.getElementById('mob-mp').textContent      = mpDays > 0 ? mpDays + '天' : '完成';
+    document.getElementById('mob-mp-date').textContent = '目標 ' + lastMs.s;
+  }
+
+  // ── next milestone ──
+  const future = STATE.tasks.filter(t => t.ms && t.startDate > TODAY)
+    .sort((a,b) => a.startDate - b.startDate);
+  const next = future[0];
+  const nextEl = document.getElementById('mobNextMs');
+  if (next) {
+    const diff   = Math.round((next.startDate - TODAY) / 86400000);
+    const isCp   = STATE.cpIds.has(next.id);
+    const urgent = diff <= 14;
+    nextEl.innerHTML = `
+      <div class="mob-next-label">下一里程碑${isCp ? ' ⚡' : ''}</div>
+      <div class="mob-next-name">${escH(next.n)}</div>
+      <div class="mob-next-date">${next.s}</div>
+      <div class="mob-next-diff" style="color:${urgent?'#fbbf24':'#34d399'}">${diff}天後</div>`;
+  } else {
+    nextEl.innerHTML = '<div class="mob-next-label">所有里程碑已完成</div>';
+  }
+
+  // ── PM checklist ──
+  const rule = next ? matchStageRule(next.n) : null;
+  const clEl = document.getElementById('mobChecklist');
+  if (rule && rule.pm_tasks && rule.pm_tasks.length) {
+    const diff = next ? Math.round((next.startDate - TODAY) / 86400000) : 999;
+    const urgent = diff <= 14;
+    const tasks = urgent ? rule.pm_tasks : rule.pm_tasks.slice(0, 4);
+    clEl.style.display = 'block';
+    clEl.innerHTML = `
+      <div class="mob-cl-label">PM Checklist — ${rule.label}${urgent ? ' 🔴' : ''}</div>
+      ${tasks.map(t => `<div class="mob-cl-item">
+        <div class="mob-cl-dot${urgent?' urgent':''}"></div>
+        <span>${escH(t)}</span>
+      </div>`).join('')}
+      ${!urgent && rule.pm_tasks.length > 4 ? `<div style="font-size:9px;color:#1e5a7a;margin-top:4px">…另有 ${rule.pm_tasks.length - 4} 項</div>` : ''}`;
+  } else {
+    clEl.style.display = 'none';
+  }
+
+  // ── milestone timeline ──
+  const tlEl = document.getElementById('mobTimeline');
+  const allMs = STATE.tasks.filter(t => t.ms).sort((a,b) => a.startDate - b.startDate);
+  let tlHtml = '<div class="mob-tl-line"></div>';
+  allMs.forEach(ms => {
+    const diff  = Math.round((ms.startDate - TODAY) / 86400000);
+    const isPast  = diff < 0;
+    const isToday = diff === 0;
+    const isSoon  = diff > 0 && diff <= 30;
+    const isCp    = STATE.cpIds.has(ms.id);
+    const cls = isPast ? 'past' : isToday ? 'today' : isSoon ? 'soon' : 'future';
+    const nameClass = isPast ? 'past' : isSoon ? 'soon' : '';
+    const diffStr = isPast ? `${Math.abs(diff)}d ago` : isToday ? 'TODAY' : `+${diff}d`;
+    tlHtml += `<div class="mob-ms-node">
+      <div class="mob-ms-diamond ${cls}${isCp?' cp':''}"></div>
+      <div class="mob-ms-name ${nameClass}">${escH(ms.n.length > 12 ? ms.n.slice(0,12)+'…' : ms.n)}</div>
+      <div class="mob-ms-date">${ms.s.slice(5)}</div>
+      <div class="mob-ms-diff">${diffStr}</div>
+    </div>`;
+  });
+  tlEl.innerHTML = tlHtml;
+}
+
+// ── Init mobile on load and resize ──
+function initMobileMode() {
+  if (!isMobile()) return;
+  // show mobile dashboard by default
+  const dash = document.getElementById('mobileDash');
+  const tabs = document.querySelector('.tabs');
+  if (dash) dash.style.display = 'flex';
+  if (tabs) tabs.style.display = 'none';
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  // build dash if project loaded
+  if (STATE.tasks.length) buildMobileDash();
+}
+
+// Hook into showMainApp
+const _origShowMainApp = showMainApp;
+function showMainApp(filename, tasks) {
+  _origShowMainApp(filename, tasks);
+  if (isMobile()) initMobileMode();
+}
+
+// Hook into buildStatusPanel — also update mobile
+const _origBuildStatus = buildStatusPanel;
+function buildStatusPanel() {
+  _origBuildStatus();
+  if (isMobile() && STATE.tasks.length && _mobView === 'dash') {
+    buildMobileDash();
+  }
+}
+
+// Resize handler
+window.addEventListener('resize', () => {
+  if (isMobile() && STATE.tasks.length && _mobView === 'dash') {
+    initMobileMode();
+  }
+});
 
 </script>
 </body>
