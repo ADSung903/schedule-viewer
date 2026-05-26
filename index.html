@@ -2463,7 +2463,7 @@ function loadMrdFile(file) {
       // Extract text with budget: high-priority sheets get more space
       let text = '';
       let skipped = [];
-      const BUDGET = 9000; // total char budget
+      const BUDGET = 7000; // total char budget (reduced to give more room for output)
 
       sortedSheets.forEach(name => {
         const pri = sheetPriority(name);
@@ -2478,7 +2478,7 @@ function loadMrdFile(file) {
         });
 
         // Each sheet budget: high=3000, med=2000, low=1500
-        const sheetBudget = pri === 3 ? 3000 : pri === 2 ? 2000 : 1500;
+        const sheetBudget = pri === 3 ? 2500 : pri === 2 ? 1500 : 1000;
         const trimmed = sheetText.slice(0, sheetBudget);
         if (text.length + trimmed.length <= BUDGET) {
           text += trimmed;
@@ -2523,25 +2523,16 @@ async function analyzeMrd() {
     <div class="mrd-loading-text">AI 分析 MRD 中，請稍候...</div>
   </div>`;
 
-  const prompt = `你是一位資深的顯示器產品開發專案經理，擅長解讀 MRD 並規劃認證流程。
+  const prompt = `你是資深顯示器PM，分析MRD並規劃認證流程。回傳JSON，不要其他文字。
 
-請分析以下 MRD 內容，回傳 JSON，不要有任何其他文字。
-
-MRD 內容：
+MRD：
 ${mrdRawText}
 
-認證依賴關係說明：
-- trigger: 觸發此認證需要的前置里程碑，只能是以下之一：
-  "panel_spec"（需要面板規格書）
-  "dvt_pcba"（DVT PCBA 完成，約 DVT 開始）
-  "sit_build"（SIT Build Sample，第一批實體樣品）
-  "svt_build"（SVT Build Sample）
-  "sovp"（SoVP 完成後）
-  "cb_done"（CB 認證完成後才能觸發，通常是依賴 CB 的認證）
-- depends_on: 此認證必須等另一個認證先完成，填那個認證的 name，沒有則填 null
-- lead_time_weeks: 預計週數（整數）
+trigger值：panel_spec/dvt_pcba/sit_build/svt_build/sovp/cb_done
+depends_on：依賴的認證name，無則null
+lead_time_weeks：整數
 
-請回傳：
+回傳：
 {
   "product": {
     "name": "產品名稱",
