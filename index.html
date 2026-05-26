@@ -494,6 +494,24 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 .mf-label{font-size:8px;color:#3a7a9a;letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0}
 .mf-count{font-size:9px;color:#1e5a7a;white-space:nowrap;flex-shrink:0}
 
+
+/* ── Sample Plan Table ── */
+.sample-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:2px}
+.sample-table th{background:#06101a;color:#6ab4c8;font-weight:500;padding:5px 7px;
+  border:1px solid #0d2d4a;text-align:center;letter-spacing:0.04em;white-space:nowrap;font-size:9px}
+.sample-table th.phase-hdr{background:#070d18;color:#a0dcfc;font-size:10px;font-weight:500;min-width:48px}
+.sample-table td{border:1px solid #0d2d4a;padding:3px 4px;text-align:center;vertical-align:middle}
+.sample-table td.phase-label{background:#070d18;color:#7dd3fc;font-weight:500;font-size:10px;
+  padding:5px 8px;white-space:nowrap}
+.sample-table td.disabled{background:#060810;color:#1e3a5a;cursor:not-allowed}
+.sample-input{background:transparent;border:none;color:#daeeff;text-align:center;
+  width:100%;padding:2px;font-size:10px;outline:none;font-family:inherit}
+.sample-input:focus{background:#0a1828;border-radius:2px}
+.sample-input::-webkit-inner-spin-button,.sample-input::-webkit-outer-spin-button{opacity:0.3}
+.sample-total{background:#061828;color:#34d399;font-weight:500;font-size:11px;min-width:44px}
+.sample-total-row td{background:#06101a;border-top:1px solid #0d3a5a}
+.sample-note{font-size:9px;color:#3a7a9a;margin-top:6px;line-height:1.6}
+
 /* ── Parse log ── */
 #parseLog{display:none;margin-top:8px;background:#06101a;border:1px solid #0d2d4a;border-radius:4px;padding:10px;font-size:10px;color:#3a7a9a;max-height:120px;overflow-y:auto}
 .log-ok{color:#34d399}.log-warn{color:#fbbf24}.log-err{color:#f87171}
@@ -509,7 +527,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="hub-title">Project Schedule Manager</div>
     <div class="hub-sub">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.020</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.021</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -545,7 +563,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="upload-title">Project Schedule Viewer</div>
     <div class="upload-sub" style="margin-top:4px">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.020</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.021</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -1199,6 +1217,30 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
         </div>
       </div>
 
+
+      <!-- Sample Plan -->
+      <div class="info-section">
+        <div class="info-section-hdr" onclick="toggleInfoSection('sec-sample')">
+          <span class="info-section-title">樣機數量計畫</span>
+          <span style="font-size:9px;color:#1e5a7a" id="sec-sample-tog">▼</span>
+        </div>
+        <div id="sec-sample" style="padding:10px 12px;overflow-x:auto">
+          <table class="sample-table">
+            <thead><tr><th class="phase-hdr">Phase</th><th>EE</th><th>ME</th><th>FW/SW</th><th>PWR/ME</th><th>Safety</th><th>EMI</th><th>DQE</th><th>MQE</th><th>LNV</th><th>BJ/SZ</th><th>Safety/EMI</th><th>Others</th><th>LCM</th><th class="sample-total">Total</th></tr></thead>
+            <tbody>
+              <tr><td class="phase-label">DVT</td><td><input class="sample-input" type="number" min="0" id="sp_DVT_EE" oninput="calcSampleTotal('DVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_DVT_ME" oninput="calcSampleTotal('DVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_DVT_FW_SW" oninput="calcSampleTotal('DVT')" placeholder="0"></td><td class="disabled">—</td><td class="disabled">—</td><td class="disabled">—</td><td><input class="sample-input" type="number" min="0" id="sp_DVT_DQE" oninput="calcSampleTotal('DVT')" placeholder="0"></td><td class="disabled">—</td><td class="disabled">—</td><td class="disabled">—</td><td class="disabled">—</td><td><input class="sample-input" type="number" min="0" id="sp_DVT_Others" oninput="calcSampleTotal('DVT')" placeholder="0"></td><td class="disabled">—</td><td class="sample-total" id="sp_DVT_total">0</td></tr>
+              <tr><td class="phase-label">SIT</td><td><input class="sample-input" type="number" min="0" id="sp_SIT_EE" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_ME" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_FW_SW" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_PWR_ME" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_Safety" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_EMI" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_DQE" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_MQE" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_LNV" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_BJ_SZ" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_Safety_EMI" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_Others" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SIT_LCM" oninput="calcSampleTotal('SIT')" placeholder="0"></td><td class="sample-total" id="sp_SIT_total">0</td></tr>
+              <tr><td class="phase-label">SVT</td><td><input class="sample-input" type="number" min="0" id="sp_SVT_EE" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_ME" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_FW_SW" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_PWR_ME" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_Safety" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_EMI" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_DQE" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_MQE" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_LNV" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_BJ_SZ" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_Safety_EMI" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_Others" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td><input class="sample-input" type="number" min="0" id="sp_SVT_LCM" oninput="calcSampleTotal('SVT')" placeholder="0"></td><td class="sample-total" id="sp_SVT_total">0</td></tr>
+            </tbody>
+          </table>
+          <div class="sample-note">
+            ◆ DVT：Working sample 來自供應商（SDC 等），僅 EE / ME / FW / DQE / Others 可填<br>
+            ◆ LCM：LCM 有獨立製造流程，數量單獨列計<br>
+            ◆ Total = 各欄加總（不含灰色欄）
+          </div>
+        </div>
+      </div>
+
       <!-- Update Log -->
       <div class="info-section">
         <div class="info-section-hdr" onclick="toggleInfoSection('sec-log')">
@@ -1309,6 +1351,7 @@ let STATE = {
   floatMap: {},
   mrdResult: null,
   _infoData: {},
+  _sampleData: {},
   _logEntries: [],
   _monthFilter: null, // null = show all, 'YYYY-M' = filter
   _members: [],
@@ -2958,7 +3001,7 @@ function exportExcel() {
 
   const s4 = [
     ['Project',          proj],
-    ['App Version',      'V0.020'],
+    ['App Version',      'V0.021'],
     ['Export Date',      today],
 
     [''],
@@ -3331,7 +3374,8 @@ function stateToProject(name, schFilename, mrdFilename) {
     updatedTime: new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'}),
     version: PSM_VERSION,
     infoData:   STATE._infoData   || {},
-    logEntries: STATE._logEntries || [],
+    sampleData: STATE._sampleData || {},
+    logEntries: STATE._logEntries || {},
     members:    STATE._members    || [],
     kb:         STATE._kb         || null,
     tasks: serialTasks,
@@ -3379,7 +3423,9 @@ function projectToState(proj) {
   });
   // restore info fields
   STATE._infoData   = proj.infoData   || {};
+  STATE._sampleData = proj.sampleData || {};
   STATE._logEntries = proj.logEntries || [];
+  STATE._sampleData = proj.sampleData || {};
   STATE._members    = proj.members    || [];
   STATE._kb         = proj.kb ? { ...KB_DEFAULT, ...proj.kb } : loadKB();
 }
@@ -3428,7 +3474,7 @@ function showHub() {
 function buildChangelogHTML() {
   return `
     <div class="cl-entry">
-      <div class="cl-ver"><span class="cl-ver-num">V0.020</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+      <div class="cl-ver"><span class="cl-ver-num">V0.021</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
       <ul class="cl-items">
         <li class="cl-item">Project Hub：專案卡片首頁，多專案管理</li>
         <li class="cl-item">localStorage 自動儲存（每60秒），開啟App自動還原</li>
@@ -3739,6 +3785,7 @@ function setInfoData(data) {
 function saveInfoFields() {
   if (!STATE.tasks.length) return;
   STATE._infoData = getInfoData();
+  STATE._sampleData = getSampleData();
   STATE._logEntries = STATE._logEntries || [];
   STATE._members = STATE._members || [];
   saveProjectNow(false);
@@ -3748,6 +3795,8 @@ function saveInfoFields() {
 
 function loadInfoFields() {
   if (STATE._infoData) setInfoData(STATE._infoData);
+  if (STATE._sampleData) setSampleData(STATE._sampleData);
+  else { SAMPLE_PHASES.forEach(p => calcSampleTotal(p)); }
   initMembers();
   renderMemberList();
   renderLogList();
@@ -4582,6 +4631,50 @@ function updateMfCount() {
   const [y, m] = STATE._monthFilter.split('-').map(Number);
   const filtered = STATE.tasks.filter(t => taskInMonth(t, y, m));
   el.textContent = `${MONTH_NAMES[m]} ${y} — ${filtered.length} 個任務`;
+}
+
+
+// ─────────────────────────────────────────────
+// SAMPLE PLAN
+// ─────────────────────────────────────────────
+const SAMPLE_COLS = ['EE','ME','FW_SW','PWR_ME','Safety','EMI','DQE','MQE','LNV','BJ_SZ','Safety_EMI','Others','LCM'];
+const SAMPLE_PHASES = ['DVT','SIT','SVT'];
+
+function calcSampleTotal(phase) {
+  let total = 0;
+  SAMPLE_COLS.forEach(col => {
+    const el = document.getElementById('sp_' + phase + '_' + col);
+    if (el) total += parseInt(el.value || '0') || 0;
+  });
+  const totalEl = document.getElementById('sp_' + phase + '_total');
+  if (totalEl) {
+    totalEl.textContent = total || '0';
+    totalEl.style.color = total > 0 ? '#34d399' : '#1e5a7a';
+  }
+}
+
+function getSampleData() {
+  const data = {};
+  SAMPLE_PHASES.forEach(phase => {
+    SAMPLE_COLS.forEach(col => {
+      const el = document.getElementById('sp_' + phase + '_' + col);
+      if (el) data['sp_' + phase + '_' + col] = el.value || '';
+    });
+  });
+  return data;
+}
+
+function setSampleData(data) {
+  if (!data) return;
+  SAMPLE_PHASES.forEach(phase => {
+    SAMPLE_COLS.forEach(col => {
+      const el = document.getElementById('sp_' + phase + '_' + col);
+      if (el && data['sp_' + phase + '_' + col] !== undefined) {
+        el.value = data['sp_' + phase + '_' + col];
+      }
+    });
+    calcSampleTotal(phase);
+  });
 }
 
 </script>
