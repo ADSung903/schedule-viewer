@@ -3394,7 +3394,17 @@ function stateToProject(name, schFilename, mrdFilename) {
 function projectToState(proj) {
   STATE.tasks       = proj.tasks || [];
   STATE.lanes       = proj.lanes || [];
-  STATE.mrdResult   = proj.mrdResult || null;
+  // restore mrdResult — check both inline and separate storage
+  if (proj.mrdResult) {
+    STATE.mrdResult = proj.mrdResult;
+  } else if (proj._hasMrd) {
+    try {
+      const stored = localStorage.getItem('psmv_mrd_' + proj.id);
+      STATE.mrdResult = stored ? JSON.parse(stored) : null;
+    } catch(e) { STATE.mrdResult = null; }
+  } else {
+    STATE.mrdResult = null;
+  }
   STATE.cpIds       = new Set(proj.cpIds || []);
   STATE.longestPath = new Set(proj.longestPath || []);
   STATE.mpPath      = new Set(proj.mpPath || []);
@@ -3439,6 +3449,17 @@ function saveProjectNow(silent) {
   const proj = stateToProject(name, schF, mrdF);
   if (!CURRENT_PROJECT_ID) CURRENT_PROJECT_ID = proj.id;
   else proj.id = CURRENT_PROJECT_ID;
+  // if mrdResult makes project too large, strip it and save separately
+  const projSize = JSON.stringify(proj).length;
+  if (projSize > 4 * 1024 * 1024) {
+    // >4MB: save without mrdResult, store it separately
+    const mrdBackup = proj.mrdResult;
+    proj.mrdResult = null;
+    proj._hasMrd = true; // flag that MRD exists but stored separately
+    try {
+      localStorage.setItem('psmv_mrd_' + proj.id, JSON.stringify(mrdBackup));
+    } catch(e) { /* MRD too large, skip */ }
+  }
   const result = Storage.saveProject(proj);
   Storage.setActive(CURRENT_PROJECT_ID);
   if (!silent) {
@@ -3567,6 +3588,10 @@ function openProject(id) {
   if (proj.mrdResult) {
     document.getElementById('tabMrd').style.display = '';
     document.getElementById('btnUploadMrd').style.display = '';
+    // restore MRD rendered content
+    setTimeout(() => {
+      if (STATE.mrdResult) renderMrdResult(STATE.mrdResult);
+    }, 300);
   }
   const savedEl = document.getElementById('appSavedAt');
   if (savedEl) savedEl.textContent = `上次儲存：${proj.updatedAt} ${proj.updatedTime||''}  ·  ${proj.version||''}`;
@@ -3723,6 +3748,9 @@ function initApp() {
       if (proj.mrdResult) {
         document.getElementById('tabMrd').style.display = '';
         document.getElementById('btnUploadMrd').style.display = '';
+        setTimeout(() => {
+          if (STATE.mrdResult) renderMrdResult(STATE.mrdResult);
+        }, 300);
       }
       const savedEl = document.getElementById('appSavedAt');
       if (savedEl) savedEl.textContent = `上次儲存：${proj.updatedAt} ${proj.updatedTime||''}`;
