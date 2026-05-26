@@ -481,6 +481,19 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
   .gantt-wrap { max-height:45vh }
 }
 
+
+/* ── Month Filter ── */
+.month-filter-wrap{display:flex;align-items:center;gap:6px;padding:5px 0 3px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.month-filter-wrap::-webkit-scrollbar{display:none}
+.mf-chip{font-size:9px;padding:3px 9px;border-radius:10px;cursor:pointer;white-space:nowrap;border:1px solid #0d2d4a;background:transparent;color:#5a9aba;transition:all 0.15s;letter-spacing:0.04em}
+.mf-chip:hover{border-color:#0ea5e9;color:#7dd3fc}
+.mf-chip.active{background:#061828;border-color:#0ea5e9;color:#38bdf8;box-shadow:0 0 5px #0ea5e920}
+.mf-chip.has-items{border-color:#0d3a5a}
+.mf-clear{font-size:9px;padding:3px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;border:1px solid #7f1d1d;background:transparent;color:#f87171;display:none}
+.mf-clear.visible{display:inline-block}
+.mf-label{font-size:8px;color:#3a7a9a;letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0}
+.mf-count{font-size:9px;color:#1e5a7a;white-space:nowrap;flex-shrink:0}
+
 /* ── Parse log ── */
 #parseLog{display:none;margin-top:8px;background:#06101a;border:1px solid #0d2d4a;border-radius:4px;padding:10px;font-size:10px;color:#3a7a9a;max-height:120px;overflow-y:auto}
 .log-ok{color:#34d399}.log-warn{color:#fbbf24}.log-err{color:#f87171}
@@ -775,6 +788,12 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 
   <!-- Tab: Gantt -->
   <div class="tab-panel active" id="panelGantt">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="mf-label">月份篩選</span>
+      <div class="month-filter-wrap" id="monthFilterWrap"></div>
+      <span class="mf-count" id="mfCount"></span>
+      <button class="mf-clear" id="mfClear" onclick="clearMonthFilter()">✕ 清除篩選</button>
+    </div>
     <div class="gantt-wrap" id="gw">
       <div class="gantt-inner" id="gi">
         <canvas id="cvs"></canvas>
@@ -1291,6 +1310,7 @@ let STATE = {
   mrdResult: null,
   _infoData: {},
   _logEntries: [],
+  _monthFilter: null, // null = show all, 'YYYY-M' = filter
   _members: [],
   _kb: null,
   _schFilename: '',
@@ -1867,18 +1887,25 @@ function buildActionSuggestion(futureMilestones, elapsed, totalDays, pct) {
   // ── PM task list (show when ≤30 days or has rule) ──
   if (pmTasks.length > 0 && diff <= 30) {
     const showAll = diff <= 7;
-    const tasksToShow = showAll ? pmTasks : pmTasks.slice(0, 5);
+    const SHOW_INIT = 5;
+    // render ALL items, hide extras with display:none
     taskListHtml += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #0d2d4a">
-      <div style="font-size:8px;color:#1e5a7a;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">
+      <div style="font-size:8px;color:#6ab4c8;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">
         PM Checklist — ${rule.label}
       </div>
-      <div style="display:flex;flex-direction:column;gap:3px">
-        ${tasksToShow.map((t,i) => `<div class="pm-task-item" style="display:${!showAll && i>=5?'none':'flex'};align-items:flex-start;gap:5px;font-size:10px;color:#8abcc8">
+      <div id="pmTaskList" style="display:flex;flex-direction:column;gap:3px">
+        ${pmTasks.map((t,i) => `<div class="pm-task-item" style="display:${showAll || i < SHOW_INIT ? 'flex' : 'none'};align-items:flex-start;gap:5px;font-size:10px;color:#8abcc8">
           <span style="color:#4a8aa0;flex-shrink:0;margin-top:1px">○</span>
           <span>${escH(t)}</span>
         </div>`).join('')}
-        ${!showAll && pmTasks.length > 5 ? `<div id="pmShowMore" onclick="pmToggleAll(this, ${JSON.stringify(pmTasks).replace(/"/g,'&quot;')})" style="font-size:9px;color:#0ea5e9;margin-top:4px;cursor:pointer;user-select:none">▼ 另有 ${pmTasks.length-5} 項（點擊展開）</div>` : ''}
       </div>
+      ${!showAll && pmTasks.length > SHOW_INIT
+        ? `<div id="pmShowMore" onclick="pmToggleAll(this)"
+            data-total="${pmTasks.length}" data-init="${SHOW_INIT}"
+            style="font-size:9px;color:#0ea5e9;margin-top:5px;cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px">
+            <span id="pmShowMoreIcon">▼</span> 另有 ${pmTasks.length - SHOW_INIT} 項（點擊展開）
+           </div>`
+        : ''}
     </div>`;
   }
 
@@ -1960,6 +1987,11 @@ function render() {
   h += `<div style="position:absolute;left:${todayP}%;top:0;bottom:0;width:1px;background:#ef4444;box-shadow:0 0 5px #ef444480;z-index:5"></div>`;
   h += `</div></div>`;
 
+  // apply month filter
+  const mfActive = STATE._monthFilter;
+  let mfYear = 0, mfMonth = 0;
+  if (mfActive) { [mfYear, mfMonth] = mfActive.split('-').map(Number); }
+
   STATE.lanes.forEach(lane => {
     const col = STATE.collapsed[lane.id];
     h += `<div class="lane">`;
@@ -1972,6 +2004,8 @@ function render() {
     if (!col) {
       lane.tasks.forEach(t => {
         if (!t.startDate) return;
+        // month filter: skip tasks not in selected month
+        if (mfActive && !taskInMonth(t, mfYear, mfMonth)) return;
         const sp = pct(t.startDate), fp = pct(t.finishDate);
         const w = Math.max(fp - sp, 0.3);
         const isMs = t.ms || (w < 0.4);
@@ -2002,6 +2036,9 @@ function render() {
   });
 
   gc.innerHTML = h;
+
+  // build month filter chips after render
+  setTimeout(() => buildMonthFilter(), 50);
 
   requestAnimationFrame(() => {
     const gcEl = document.getElementById('gc');
@@ -4335,22 +4372,21 @@ window.addEventListener('resize', () => {
 });
 
 
-function pmToggleAll(el, allTasks) {
-  const container = el.parentNode.querySelector('div[style*="flex-direction"]') ||
-                    el.previousElementSibling;
-  if (!container) return;
+function pmToggleAll(el) {
+  const total = parseInt(el.dataset.total || '0');
+  const init  = parseInt(el.dataset.init  || '5');
+  const list  = document.getElementById('pmTaskList');
+  const icon  = document.getElementById('pmShowMoreIcon');
+  if (!list) return;
+  const items = list.querySelectorAll('.pm-task-item');
   const isExpanded = el.dataset.expanded === '1';
   if (isExpanded) {
-    // collapse
-    const items = container.querySelectorAll('.pm-task-item');
-    items.forEach((item, i) => { if (i >= 5) item.style.display = 'none'; });
-    el.textContent = `▼ 另有 ${allTasks.length - 5} 項（點擊展開）`;
+    items.forEach((item, i) => { item.style.display = i < init ? 'flex' : 'none'; });
+    el.innerHTML = `<span id="pmShowMoreIcon">▼</span> 另有 ${total - init} 項（點擊展開）`;
     el.dataset.expanded = '0';
   } else {
-    // expand all
-    const items = container.querySelectorAll('.pm-task-item');
     items.forEach(item => { item.style.display = 'flex'; });
-    el.textContent = '▲ 收合';
+    el.innerHTML = `<span id="pmShowMoreIcon">▲</span> 收合`;
     el.dataset.expanded = '1';
   }
 }
@@ -4385,6 +4421,100 @@ function mobTogglePmAll(el) {
       el.dataset.expanded = '1';
     }
   } catch(e) { console.error(e); }
+}
+
+
+// ─────────────────────────────────────────────
+// MONTH FILTER
+// ─────────────────────────────────────────────
+const MONTH_NAMES = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+function buildMonthFilter() {
+  const wrap  = document.getElementById('monthFilterWrap');
+  const clear = document.getElementById('mfClear');
+  if (!wrap || !STATE.tasks.length) return;
+
+  // collect months that have tasks
+  const monthSet = new Set();
+  STATE.tasks.forEach(t => {
+    if (!t.startDate || !t.finishDate) return;
+    // iterate from start month to finish month
+    const s = new Date(t.startDate.getFullYear(), t.startDate.getMonth(), 1);
+    const f = new Date(t.finishDate.getFullYear(), t.finishDate.getMonth(), 1);
+    let cur = new Date(s);
+    while (cur <= f) {
+      monthSet.add(`${cur.getFullYear()}-${cur.getMonth()}`);
+      cur.setMonth(cur.getMonth() + 1);
+    }
+  });
+
+  // sort months
+  const months = [...monthSet].sort((a,b) => {
+    const [ay,am] = a.split('-').map(Number);
+    const [by,bm] = b.split('-').map(Number);
+    return ay !== by ? ay - by : am - bm;
+  });
+
+  wrap.innerHTML = months.map(key => {
+    const [y, m] = key.split('-').map(Number);
+    const label = MONTH_NAMES[m] + (m === 0 ? `'${String(y).slice(2)}` : '');
+    const isActive = STATE._monthFilter === key;
+    // count tasks in this month
+    const cnt = STATE.tasks.filter(t => taskInMonth(t, y, m)).length;
+    return `<button class="mf-chip${isActive?' active':''} has-items"
+      onclick="setMonthFilter('${key}', this)"
+      title="${y}/${m+1} — ${cnt} 個任務">
+      ${label}<sup style="font-size:7px;opacity:0.7"> ${cnt}</sup>
+    </button>`;
+  }).join('');
+
+  // show/hide clear button
+  if (clear) clear.className = 'mf-clear' + (STATE._monthFilter ? ' visible' : '');
+  updateMfCount();
+}
+
+function taskInMonth(t, year, month) {
+  if (!t.startDate || !t.finishDate) return false;
+  const monthStart = new Date(year, month, 1);
+  const monthEnd   = new Date(year, month + 1, 0); // last day
+  return t.startDate <= monthEnd && t.finishDate >= monthStart;
+}
+
+function setMonthFilter(key, btn) {
+  // toggle: click same month again to clear
+  if (STATE._monthFilter === key) {
+    clearMonthFilter();
+    return;
+  }
+  STATE._monthFilter = key;
+  // update button states
+  document.querySelectorAll('.mf-chip').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const clear = document.getElementById('mfClear');
+  if (clear) clear.className = 'mf-clear visible';
+  updateMfCount();
+  render(); // re-render gantt with filter
+}
+
+function clearMonthFilter() {
+  STATE._monthFilter = null;
+  document.querySelectorAll('.mf-chip').forEach(b => b.classList.remove('active'));
+  const clear = document.getElementById('mfClear');
+  if (clear) clear.className = 'mf-clear';
+  updateMfCount();
+  render();
+}
+
+function updateMfCount() {
+  const el = document.getElementById('mfCount');
+  if (!el) return;
+  if (!STATE._monthFilter) {
+    el.textContent = `共 ${STATE.tasks.length} 個任務`;
+    return;
+  }
+  const [y, m] = STATE._monthFilter.split('-').map(Number);
+  const filtered = STATE.tasks.filter(t => taskInMonth(t, y, m));
+  el.textContent = `${MONTH_NAMES[m]} ${y} — ${filtered.length} 個任務`;
 }
 
 </script>
