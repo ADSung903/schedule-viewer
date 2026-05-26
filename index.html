@@ -88,7 +88,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .action-icon{font-size:16px;flex-shrink:0;margin-top:1px}
 .action-content{flex:1}
 .action-label{font-size:8px;color:#1e5a7a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px}
-.action-text{font-size:11px;color:#c8e6ff;line-height:1.5}
+.action-text{font-size:11px;color:#c8e6ff;line-height:1.5;flex:1}
 .action-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .action-chip{font-size:9px;padding:2px 7px;border-radius:2px;letter-spacing:0.04em}
 .chip-warn{background:#1a1200;color:#fbbf24;border:1px solid #d9770640}
@@ -321,6 +321,49 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 .log-add-row .info-select{width:110px;flex-shrink:0}
 .panel-etd-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 
+
+/* ── Team Member Cards ── */
+.member-card-dark{background:#060a10;border:1px solid #0d2d4a;border-radius:5px;padding:10px 12px;margin-bottom:8px;position:relative}
+.member-card-dark.freq-core{border-left:3px solid #7c3aed}
+.member-card-dark.freq-close{border-left:3px solid #0ea5e9}
+.member-card-dark.freq-async{border-left:3px solid #3a7a9a}
+.member-card-top{display:flex;align-items:flex-start;gap:10px}
+.member-fn-badge{min-width:52px;padding:4px 6px;border-radius:4px;font-size:10px;font-weight:500;text-align:center;flex-shrink:0;line-height:1.3}
+.member-fn-pm{background:#1a0e2e;color:#c4b5fd;border:1px solid #7c3aed40}
+.member-fn-dm{background:#06101a;color:#38bdf8;border:1px solid #0ea5e940}
+.member-fn-ee{background:#06101a;color:#38bdf8;border:1px solid #0ea5e940}
+.member-fn-me{background:#0a1a12;color:#34d399;border:1px solid #05966940}
+.member-fn-lcm{background:#0a1a12;color:#34d399;border:1px solid #05966940}
+.member-fn-fw{background:#12100a;color:#fbbf24;border:1px solid #d9770640}
+.member-fn-pd{background:#12100a;color:#fbbf24;border:1px solid #d9770640}
+.member-fn-safety{background:#1a0808;color:#f87171;border:1px solid #ef444440}
+.member-fn-fq{background:#0a1520;color:#5a9aba;border:1px solid #0d2d4a}
+.member-fn-default{background:#0a1520;color:#5a9aba;border:1px solid #0d2d4a}
+.member-body{flex:1;min-width:0}
+.member-name-row{display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap}
+.member-name{font-size:12px;font-weight:500;color:#c8e6ff}
+.member-site{font-size:9px;padding:1px 6px;border-radius:2px}
+.site-tpe{background:#0a1828;color:#38bdf8;border:1px solid #0ea5e940}
+.site-fq{background:#0a1520;color:#5a9aba;border:1px solid #0d2d4a}
+.member-desc{font-size:10px;color:#5a8aaa;line-height:1.5;margin-bottom:5px}
+.member-phases{display:flex;flex-wrap:wrap;gap:4px}
+.mphase{font-size:9px;padding:1px 6px;border-radius:10px}
+.mphase-now{background:#042C53;color:#B5D4F4}
+.mphase-dvt{background:#27500A;color:#C0DD97}
+.mphase-sit{background:#633806;color:#FAC775}
+.mphase-svt{background:#712B13;color:#F5C4B3}
+.mphase-sovp{background:#444441;color:#D3D1C7}
+.member-actions{display:flex;gap:5px;margin-top:6px}
+.member-edit-btn{font-size:9px;padding:2px 7px;border-radius:2px;cursor:pointer;border:1px solid #0d2d4a;background:transparent;color:#3a7a9a}
+.member-edit-btn:hover{color:#7dd3fc;border-color:#3a7a9a}
+.member-edit-btn.del{color:#f87171;border-color:#7f1d1d}
+.member-edit-btn.del:hover{background:#1a0808}
+/* Edit form */
+.member-edit-form{background:#07090f;border:1px solid #0d3a5a;border-radius:5px;padding:10px 12px;margin-bottom:8px}
+.member-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.member-edit-grid .info-field.wide{grid-column:1/-1}
+.member-edit-btns{display:flex;gap:6px;justify-content:flex-end}
+
 /* ── Parse log ── */
 #parseLog{display:none;margin-top:8px;background:#06101a;border:1px solid #0d2d4a;border-radius:4px;padding:10px;font-size:10px;color:#3a7a9a;max-height:120px;overflow-y:auto}
 .log-ok{color:#34d399}.log-warn{color:#fbbf24}.log-err{color:#f87171}
@@ -336,7 +379,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="hub-title">Project Schedule Manager</div>
     <div class="hub-sub">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.014</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.016</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -372,7 +415,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="upload-title">Project Schedule Viewer</div>
     <div class="upload-sub" style="margin-top:4px">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.014</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.016</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -929,50 +972,22 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
       <!-- Team & Contacts -->
       <div class="info-section">
         <div class="info-section-hdr" onclick="toggleInfoSection('sec-team')">
-          <span class="info-section-title">關係人 / Team</span>
+          <span class="info-section-title">Team Members</span>
           <span style="font-size:9px;color:#1e5a7a" id="sec-team-tog">▼</span>
         </div>
-        <div class="info-section-body" id="sec-team">
-          <div class="info-field">
-            <div class="info-label">PM（TPV）</div>
-            <input class="info-input" id="inf-pm" placeholder="你的名字">
+        <div id="sec-team" style="padding:10px 12px">
+
+          <!-- Legend -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #0d2d4a">
+            <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#3a7a9a"><div style="width:8px;height:8px;background:#7c3aed;border-radius:1px"></div>核心接觸（高頻）</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#3a7a9a"><div style="width:8px;height:8px;background:#0ea5e9;border-radius:1px"></div>密切協作（中頻）</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#3a7a9a"><div style="width:8px;height:8px;background:#3a7a9a;border-radius:1px"></div>專項對接（低頻）</div>
+            <button class="btn" onclick="addMember()" style="margin-left:auto;color:#34d399;border-color:#059669;font-size:9px">＋ 新增成員</button>
           </div>
-          <div class="info-field">
-            <div class="info-label">ME（TPV）</div>
-            <input class="info-input" id="inf-me" placeholder="">
-          </div>
-          <div class="info-field">
-            <div class="info-label">EE（TPV）</div>
-            <input class="info-input" id="inf-ee" placeholder="">
-          </div>
-          <div class="info-field">
-            <div class="info-label">LCM（TPV）</div>
-            <input class="info-input" id="inf-lcm" placeholder="">
-          </div>
-          <div class="info-field">
-            <div class="info-label">ID（TPV）</div>
-            <input class="info-input" id="inf-id-contact" placeholder="">
-          </div>
-          <div class="info-field">
-            <div class="info-label">SW（TPV）</div>
-            <input class="info-input" id="inf-sw" placeholder="">
-          </div>
-          <div class="info-field">
-            <div class="info-label">LNV PM</div>
-            <input class="info-input" id="inf-lnv-pm" placeholder="">
-          </div>
-          <div class="info-field">
-            <div class="info-label">LNV ME</div>
-            <input class="info-input" id="inf-lnv-me" placeholder="">
-          </div>
-          <div class="info-field">
-            <div class="info-label">Panel Vendor Contact</div>
-            <input class="info-input" id="inf-vendor-contact" placeholder="SDC Miller Chou">
-          </div>
-          <div class="info-field">
-            <div class="info-label">Cert Lab Contact</div>
-            <input class="info-input" id="inf-cert-contact" placeholder="">
-          </div>
+
+          <!-- Member list -->
+          <div id="memberList"></div>
+
         </div>
       </div>
 
@@ -1095,6 +1110,8 @@ let STATE = {
   mrdResult: null,
   _infoData: {},
   _logEntries: [],
+  _members: [],
+  _kb: null,
   _schFilename: '',
   _mrdFilename: '',
   longestPath: new Set(),
@@ -1575,6 +1592,20 @@ function buildStatusPanel() {
   buildActionSuggestion(futureMilestones, elapsed, totalDays, pct);
 }
 
+function matchStageRule(milestoneName) {
+  // match milestone name to a stage rule key
+  const kb = STATE._kb || KB_DEFAULT;
+  const n = milestoneName.toLowerCase();
+  if (/kick.?off|ko/i.test(n))        return kb.stageRules.KO;
+  if (/dvt|design.?valid/i.test(n))     return kb.stageRules.DVT;
+  if (/sit|system.?integ/i.test(n)) return kb.stageRules.SIT;
+  if (/svt|system.?valid/i.test(n)) return kb.stageRules.SVT;
+  if (/sovp|sov/i.test(n))            return kb.stageRules.SOVP;
+  if (/mp|mass.?prod|mp.?ready/i.test(n)) return kb.stageRules.MP;
+  if (/rfq|rfi/i.test(n))               return kb.stageRules.RFQ;
+  return null;
+}
+
 function buildActionSuggestion(futureMilestones, elapsed, totalDays, pct) {
   const bar   = document.getElementById('actionBar');
   const icon  = document.getElementById('actionIcon');
@@ -1583,86 +1614,115 @@ function buildActionSuggestion(futureMilestones, elapsed, totalDays, pct) {
 
   bar.className = 'action-bar visible';
 
-  // find next milestone and days remaining
   const next = futureMilestones[0];
   if (!next) {
     icon.textContent = '✅';
-    text.textContent = '所有里程碑已完成，請確認 MP 出貨準備。';
+    text.innerHTML = '所有里程碑已完成，請確認 MP 出貨準備。';
     chips.innerHTML = '<span class="action-chip chip-ok">MP Ready</span>';
     return;
   }
 
-  const diff    = Math.round((next.startDate - TODAY) / 86400000);
-  const nextN   = next.n.length > 40 ? next.n.slice(0,40) + '…' : next.n;
-  const isCp    = STATE.cpIds.has(next.id);
-  const inLng   = STATE.longestPath && STATE.longestPath.has(next.id);
-  const inMp    = STATE.mpPath && STATE.mpPath.has(next.id);
+  const diff  = Math.round((next.startDate - TODAY) / 86400000);
+  const nextN = next.n.length > 40 ? next.n.slice(0,40) + '…' : next.n;
+  const isCp  = STATE.cpIds.has(next.id);
+  const inLng = STATE.longestPath && STATE.longestPath.has(next.id);
+  const inMp  = STATE.mpPath && STATE.mpPath.has(next.id);
+  const overdue = STATE.tasks.filter(t => t.ms && t.startDate < TODAY &&
+    Math.round((t.startDate - TODAY) / 86400000) > -60);
 
-  // find what tasks are overdue (past deadline with ms flag)
-  const overdue = STATE.tasks.filter(t => t.ms && t.startDate < TODAY && Math.round((t.startDate-TODAY)/86400000) > -60);
+  // match to stage rule
+  const rule = matchStageRule(next.n);
+  const pmTasks = rule && rule.pm_tasks ? rule.pm_tasks : [];
+  const prereqs = rule && rule.prerequisites ? rule.prerequisites : [];
 
-  let suggestion = '';
-  let chipsHtml  = '';
-  let ico        = '💡';
+  let ico = '💡';
+  let chipsHtml = '';
+  let mainText = '';
+  let taskListHtml = '';
 
+  // ── urgency level ──
   if (diff < 0) {
-    // next milestone is already past
     ico = '⚠️';
-    suggestion = `「${nextN}」已逾期 ${Math.abs(diff)} 天，請立即確認完成狀態或更新時程。`;
+    mainText = `「${nextN}」已逾期 ${Math.abs(diff)} 天，請立即確認完成狀態或更新時程。`;
     chipsHtml += `<span class="action-chip chip-red">逾期 ${Math.abs(diff)}d</span>`;
     if (isCp) chipsHtml += '<span class="action-chip chip-warn">⚡ 影響關鍵路徑</span>';
 
   } else if (diff <= 7) {
     ico = '🔴';
-    suggestion = `「${nextN}」還有 ${diff} 天到期，本週內必須完成準備。`;
+    mainText = `「${nextN}」還有 <strong>${diff} 天</strong>，本週內必須完成以下準備：`;
     chipsHtml += `<span class="action-chip chip-red">${diff}天後</span>`;
-    if (isCp) chipsHtml += '<span class="action-chip chip-warn">⚡ 關鍵路徑節點</span>';
-    // find what needs to be ready
-    const prereqs = STATE.tasks.filter(t =>
-      (t.preds||[]).some(p => String(p.id) === String(next.id)) === false &&
-      (next.preds||[]).some(p => String(p.id) === String(t.id))
-    );
-    if (prereqs.length > 0) {
-      chipsHtml += prereqs.slice(0,2).map(p =>
-        `<span class="action-chip chip-info">前置: ${p.n.slice(0,16)}</span>`
-      ).join('');
-    }
+    if (isCp) chipsHtml += '<span class="action-chip chip-warn">⚡ 關鍵路徑</span>';
 
   } else if (diff <= 14) {
     ico = '🟡';
-    suggestion = `「${nextN}」還有 ${diff} 天，建議本週開始確認前置作業是否就位。`;
+    mainText = `「${nextN}」還有 <strong>${diff} 天</strong>（${next.s}），建議本週開始確認：`;
     chipsHtml += `<span class="action-chip chip-warn">${diff}天後</span>`;
     if (inMp) chipsHtml += '<span class="action-chip chip-info">🎯 MP交付鏈</span>';
 
   } else if (diff <= 30) {
     ico = '🔵';
-    suggestion = `「${nextN}」還有 ${diff} 天（${next.s}），請確認相關準備進度。`;
+    mainText = `「${nextN}」還有 <strong>${diff} 天</strong>（${next.s}），請確認前置作業進度：`;
     chipsHtml += `<span class="action-chip chip-info">${diff}天後</span>`;
     if (inLng) chipsHtml += '<span class="action-chip chip-info">⚡ 最長工程鏈</span>';
 
   } else {
     ico = '💡';
-    // look at overall progress
-    if (pct < 20) {
-      suggestion = `專案進度 ${pct}%，目前在早期階段。下一里程碑「${nextN}」在 ${diff} 天後（${next.s}）。`;
-    } else if (pct < 50) {
-      suggestion = `專案進度 ${pct}%，開發中段。下一里程碑「${nextN}」在 ${diff} 天後。`;
-    } else if (pct < 80) {
-      suggestion = `專案進度 ${pct}%，進入認證與驗證密集期。下一里程碑「${nextN}」在 ${diff} 天後。`;
-    } else {
-      suggestion = `專案進度 ${pct}%，接近 MP。下一里程碑「${nextN}」在 ${diff} 天後，注意收尾事項。`;
-    }
+    const stageName = rule ? rule.label : nextN;
+    if (pct < 20) mainText = `專案進度 ${pct}%，早期階段。下一里程碑「${stageName}」在 ${diff} 天後（${next.s}）。`;
+    else if (pct < 50) mainText = `專案進度 ${pct}%，開發中段。下一里程碑「${stageName}」在 ${diff} 天後。`;
+    else if (pct < 80) mainText = `專案進度 ${pct}%，認證驗證密集期。下一里程碑「${stageName}」在 ${diff} 天後。`;
+    else mainText = `專案進度 ${pct}%，接近 MP。下一里程碑「${stageName}」在 ${diff} 天後。`;
     chipsHtml += `<span class="action-chip chip-ok">${diff}天後</span>`;
   }
 
-  // add overdue warning chips
+  // ── PM task list (show when ≤30 days or has rule) ──
+  if (pmTasks.length > 0 && diff <= 30) {
+    const showAll = diff <= 7;
+    const tasksToShow = showAll ? pmTasks : pmTasks.slice(0, 5);
+    taskListHtml += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #0d2d4a">
+      <div style="font-size:8px;color:#1e5a7a;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">
+        PM Checklist — ${rule.label}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        ${tasksToShow.map(t => `<div style="display:flex;align-items:flex-start;gap:5px;font-size:10px;color:#5a8aaa">
+          <span style="color:#1e5a7a;flex-shrink:0;margin-top:1px">○</span>
+          <span>${escH(t)}</span>
+        </div>`).join('')}
+        ${!showAll && pmTasks.length > 5 ? `<div style="font-size:9px;color:#1e5a7a;margin-top:2px">…另有 ${pmTasks.length-5} 項（7天內顯示全部）</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // ── Prerequisites from other functions ──
+  if (prereqs.length > 0 && diff <= 14) {
+    taskListHtml += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #0d2d4a">
+      <div style="font-size:8px;color:#1e5a7a;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">
+        需各 Function 到位
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        ${prereqs.map(p => {
+          const kb = STATE._kb || KB_DEFAULT;
+          const fnColor = (kb.functions[p.fn] || {}).color || '#5a9aba';
+          // find member contact
+          const member = (STATE._members||[]).find(m => m.fn === p.fn);
+          const contact = member && member.name ? ` (${member.name})` : '';
+          return `<div style="display:flex;align-items:flex-start;gap:5px;font-size:10px">
+            <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${fnColor}22;color:${fnColor};border:1px solid ${fnColor}40;flex-shrink:0;margin-top:1px">${escH(p.fn)}${escH(contact)}</span>
+            <span style="color:#5a8aaa">${escH(p.item)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── Overdue warning ──
   if (overdue.length > 0) {
     chipsHtml += `<span class="action-chip chip-red">⚠ ${overdue.length}個里程碑已過期</span>`;
   }
 
-  icon.textContent  = ico;
-  text.textContent  = suggestion;
-  chips.innerHTML   = chipsHtml;
+  icon.textContent = ico;
+  text.innerHTML   = mainText + taskListHtml;
+  chips.innerHTML  = chipsHtml;
 }
 
 // ─────────────────────────────────────────────
@@ -2234,14 +2294,25 @@ async function analyzeMrd() {
     <div class="mrd-loading-text">AI 分析 MRD 中，請稍候...</div>
   </div>`;
 
-  const prompt = `你是一位資深的顯示器產品開發專案經理，擅長解讀 MRD（Marketing Requirements Document）。
+  const prompt = `你是一位資深的顯示器產品開發專案經理，擅長解讀 MRD 並規劃認證流程。
 
-請分析以下 MRD 內容，並以 JSON 格式回覆，不要有任何其他文字，只有 JSON。
+請分析以下 MRD 內容，回傳 JSON，不要有任何其他文字。
 
 MRD 內容：
 ${mrdRawText}
 
-請回傳以下 JSON 結構：
+認證依賴關係說明：
+- trigger: 觸發此認證需要的前置里程碑，只能是以下之一：
+  "panel_spec"（需要面板規格書）
+  "dvt_pcba"（DVT PCBA 完成，約 DVT 開始）
+  "sit_build"（SIT Build Sample，第一批實體樣品）
+  "svt_build"（SVT Build Sample）
+  "sovp"（SoVP 完成後）
+  "cb_done"（CB 認證完成後才能觸發，通常是依賴 CB 的認證）
+- depends_on: 此認證必須等另一個認證先完成，填那個認證的 name，沒有則填 null
+- lead_time_weeks: 預計週數（整數）
+
+請回傳：
 {
   "product": {
     "name": "產品名稱",
@@ -2261,18 +2332,18 @@ ${mrdRawText}
   },
   "certifications": [
     {
-      "name": "認證名稱",
+      "name": "認證名稱（簡短，如 CB、FCC、CCC）",
       "region": "適用地區",
-      "category": "Safety/EMI/Energy/Ergonomics/Other",
+      "category": "Safety/EMI/Energy/Ergonomics/Logo/Other",
       "risk_level": "high/med/low",
-      "notes": "備註（如週期長、需要特殊樣品等）"
+      "lead_time_weeks": 6,
+      "trigger": "sit_build",
+      "depends_on": null,
+      "notes": "備註（週期長、特殊需求等）"
     }
   ],
   "risks": [
-    {
-      "level": "high/med/low",
-      "item": "風險項目描述"
-    }
+    { "level": "high/med/low", "item": "風險項目描述" }
   ],
   "key_documents": ["需要準備的重要文件清單"]
 }`;
@@ -2591,7 +2662,7 @@ function exportExcel() {
 
   const s4 = [
     ['Project',          proj],
-    ['App Version',      'V0.014'],
+    ['App Version',      'V0.016'],
     ['Export Date',      today],
 
     [''],
@@ -2630,99 +2701,187 @@ function renderDynCertTree(mrd) {
   const certs = (mrd && mrd.certifications) || [];
   if (!certs.length) { initCertTree(); return; }
 
-  // Group certs by category
-  const groups = {};
+  // ── Map SCH milestone dates ──
+  const schDates = {};
+  const findTask = (regex) => STATE.tasks.find(t => regex.test(t.n));
+  const sitTask  = findTask(/sit.*build|build.*t1|t1.*sample/i);
+  const dvtTask  = findTask(/dvt.*exit|dvt.*pcba|pcba.*debug/i);
+  const svtTask  = findTask(/svt.*build|build.*t3/i);
+  const sovpTask = findTask(/sovp|build.*sovp/i);
+  if (sitTask)  schDates.sit_build  = sitTask.s;
+  if (dvtTask)  schDates.dvt_pcba   = dvtTask.s;
+  if (svtTask)  schDates.svt_build  = svtTask.s;
+  if (sovpTask) schDates.sovp       = sovpTask.s;
+  schDates.panel_spec = 'Panel Spec 確定';
+  schDates.cb_done    = 'CB 完成後';
+
+  // ── Risk / trigger colours ──
+  const RISK_C = {
+    high: {bg:'#1a0808', text:'#f87171', border:'#ef4444'},
+    med:  {bg:'#12100a', text:'#fbbf24', border:'#f59e0b'},
+    low:  {bg:'#0a1a12', text:'#34d399', border:'#10b981'},
+  };
+  const TRIG_C = {
+    panel_spec: '#7c3aed', dvt_pcba: '#0ea5e9',
+    sit_build:  '#2563eb', svt_build: '#0891b2',
+    sovp:       '#f59e0b', cb_done:   '#6366f1',
+  };
+  const CAT_C = {
+    Safety:'#2563eb', EMI:'#0ea5e9', Energy:'#10b981',
+    Ergonomics:'#8b5cf6', Logo:'#f59e0b', Other:'#3a7a9a',
+  };
+
+  // ── Group certs by trigger ──
+  const TRIGGER_ORDER = ['panel_spec','dvt_pcba','sit_build','cb_done','svt_build','sovp'];
+  const byTrigger = {};
+  TRIGGER_ORDER.forEach(t => { byTrigger[t] = []; });
   certs.forEach(c => {
-    const cat = c.category || 'Other';
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(c);
+    const trig = c.trigger || 'sit_build';
+    if (!byTrigger[trig]) byTrigger[trig] = [];
+    byTrigger[trig].push(c);
   });
 
-  const catColors = {
-    'Safety':      { border:'#2563eb', bg:'#06101a', text:'#93c5fd', hdr:'#0F3460' },
-    'EMI':         { border:'#0ea5e9', bg:'#061018', text:'#7dd3fc', hdr:'#0a1e30' },
-    'Energy':      { border:'#10b981', bg:'#061210', text:'#6ee7b7', hdr:'#052e16' },
-    'Ergonomics':  { border:'#8b5cf6', bg:'#0d0820', text:'#c4b5fd', hdr:'#1e0e45' },
-    'Other':       { border:'#3a7a9a', bg:'#060e14', text:'#7dd3fc', hdr:'#0a1828' },
-  };
-
-  const riskColors = {
-    'high': { bg:'#1a0808', text:'#f87171', border:'#ef444440' },
-    'med':  { bg:'#12100a', text:'#fbbf24', border:'#d9770640' },
-    'low':  { bg:'#0a1a12', text:'#34d399', border:'#05966940' },
-  };
-
-  // find key SCH milestones for trigger mapping
-  const sit = STATE.tasks.find(t => /sit.*build|build.*t1|t1.*sample/i.test(t.n));
-  const dvt = STATE.tasks.find(t => /dvt.*exit|dvt/i.test(t.n));
-  const svt = STATE.tasks.find(t => /svt.*exit|svt/i.test(t.n));
-  const mp  = STATE.tasks.filter(t => t.ms).sort((a,b) => b.finishDate - a.finishDate)[0];
-
-  let html = `<div style="padding:10px 0 6px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="font-size:9px;color:#3a8aaa;letter-spacing:0.1em;text-transform:uppercase">
-      ${mrd.product?.name || 'Project'} — Dynamic Cert Tree (from MRD AI)
+  // ── Build panel HTML ──
+  const prodName = mrd.product?.name || 'Project';
+  panel.innerHTML = `
+    <div style="padding:8px 0 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:9px;color:#3a8aaa;letter-spacing:0.1em;text-transform:uppercase">${escH(prodName)} — Cert Dependency Tree</div>
+      <div style="font-size:9px;color:#1e5a7a">${certs.length} 項認證</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
+        ${Object.entries(RISK_C).map(([k,v])=>`<span style="font-size:8px;padding:1px 6px;border-radius:2px;background:${v.bg};color:${v.text};border:1px solid ${v.border}40">${k}</span>`).join('')}
+      </div>
     </div>
-    <div style="font-size:9px;color:#1e5a7a">共 ${certs.length} 項認證</div>
-  </div>`;
+    <div style="overflow:auto;border:1px solid #0d2d4a;border-radius:6px;background:#060a10;position:relative">
+      <div id="certGraphWrap" style="position:relative;min-width:900px">
+        <canvas id="certCanvas" style="position:absolute;top:0;left:0;pointer-events:none;z-index:2"></canvas>
+        <div id="certNodes" style="position:relative;z-index:3;padding:12px"></div>
+      </div>
+    </div>
+    <div style="margin-top:8px;padding:8px 10px;background:#07090f;border:1px solid #0d2d4a;border-radius:4px;font-size:9px;color:#1e5a7a;line-height:1.6">
+      ← 箭頭方向 = 依賴關係（A → B 代表 B 依賴 A 先完成）&nbsp;·&nbsp;
+      <span style="color:#ef4444">紅框</span> = 高風險 &nbsp;·&nbsp;
+      <span style="color:#f59e0b">橙框</span> = 中風險 &nbsp;·&nbsp;
+      <span style="color:#34d399">綠框</span> = 低風險
+    </div>`;
 
-  // trigger milestones summary
-  html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">`;
-  if (sit) html += `<div style="font-size:9px;padding:3px 8px;background:#06101a;border:1px solid #0d2d4a;border-radius:3px;color:#3a8aaa">SIT Build: ${sit.s}</div>`;
-  if (dvt) html += `<div style="font-size:9px;padding:3px 8px;background:#06101a;border:1px solid #0d2d4a;border-radius:3px;color:#3a8aaa">DVT Exit: ${dvt.s}</div>`;
-  if (svt) html += `<div style="font-size:9px;padding:3px 8px;background:#06101a;border:1px solid #0d2d4a;border-radius:3px;color:#3a8aaa">SVT Exit: ${svt.s}</div>`;
-  if (mp)  html += `<div style="font-size:9px;padding:3px 8px;background:#12100a;border:1px solid #d9770640;border-radius:3px;color:#fbbf24">MP: ${mp.s}</div>`;
-  html += `</div>`;
+  // ── Render trigger columns ──
+  const nodesEl = document.getElementById('certNodes');
+  nodesEl.innerHTML = '';
 
-  // render each category as a swim column
-  html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;overflow:auto;border:1px solid #0d2d4a;border-radius:6px;padding:12px;background:#060a10">`;
+  // layout: columns = triggers, rows = certs within trigger
+  const COL_W = 160, COL_GAP = 20, ROW_H = 54, ROW_GAP = 8, PAD = 12;
+  const activeTriggers = TRIGGER_ORDER.filter(t => byTrigger[t] && byTrigger[t].length > 0);
 
-  Object.entries(groups).forEach(([cat, items]) => {
-    const cc = catColors[cat] || catColors['Other'];
-    html += `<div style="background:${cc.bg};border:1px solid ${cc.border}33;border-radius:6px;overflow:hidden">`;
-    html += `<div style="background:${cc.hdr};padding:6px 10px;font-size:9px;font-weight:500;color:${cc.text};letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid ${cc.border}44">${cat}</div>`;
-    items.forEach(c => {
-      const rc = riskColors[c.risk_level] || riskColors['low'];
-      html += `<div style="padding:7px 10px;border-bottom:1px solid ${cc.border}22;cursor:default"
-        title="${escH(c.notes||'')}">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:2px">
-          <span style="font-size:11px;font-weight:500;color:${cc.text}">${escH(c.name)}</span>
-          <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${rc.bg};color:${rc.text};border:1px solid ${rc.border};flex-shrink:0">${c.risk_level||'low'}</span>
+  // position map: certName → {x, y, w, h}
+  const nodePos = {};
+
+  activeTriggers.forEach((trig, ci) => {
+    const items = byTrigger[trig];
+    const x = PAD + ci * (COL_W + COL_GAP);
+    const trigColor = TRIG_C[trig] || '#3a7a9a';
+    const dateStr = schDates[trig] || '';
+
+    // trigger header
+    const hdr = document.createElement('div');
+    hdr.style.cssText = `position:absolute;left:${x}px;top:0;width:${COL_W}px;
+      background:#06101a;border:1px solid ${trigColor}60;border-radius:4px;
+      padding:5px 8px;font-size:9px;font-weight:500;color:${trigColor};
+      letter-spacing:0.06em;text-transform:uppercase;text-align:center`;
+    hdr.innerHTML = `${trig.replace(/_/g,' ')}<br><span style="font-size:8px;color:#1e5a7a;font-weight:400">${dateStr}</span>`;
+    nodesEl.appendChild(hdr);
+
+    const HDR_H = 44;
+    items.forEach((c, ri) => {
+      const y = HDR_H + PAD + ri * (ROW_H + ROW_GAP);
+      const rc = RISK_C[c.risk_level] || RISK_C.low;
+      const catColor = CAT_C[c.category] || CAT_C.Other;
+      const ltStr = c.lead_time_weeks ? `${c.lead_time_weeks}wk` : '';
+
+      const node = document.createElement('div');
+      node.id = 'cert_' + c.name.replace(/[^a-zA-Z0-9]/g,'_');
+      node.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${COL_W}px;
+        background:${rc.bg};border:1px solid ${rc.border}60;border-radius:4px;
+        padding:5px 8px;cursor:default;transition:border-color 0.15s`;
+      node.title = c.notes || '';
+      node.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:2px">
+          <span style="font-size:11px;font-weight:500;color:${rc.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(c.name)}</span>
+          ${ltStr ? `<span style="font-size:8px;color:#1e5a7a;white-space:nowrap">${ltStr}</span>` : ''}
         </div>
-        <div style="font-size:9px;color:#3a7a9a">${escH(c.region||'')}</div>
-        ${c.notes ? `<div style="font-size:9px;color:#1e5a7a;margin-top:2px;line-height:1.4">${escH(c.notes)}</div>` : ''}
-      </div>`;
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:8px;color:#1e5a7a">${escH(c.region||'')}</span>
+          <span style="font-size:8px;padding:0 4px;border-radius:2px;background:${catColor}22;color:${catColor};border:1px solid ${catColor}40;margin-left:auto">${c.category||''}</span>
+        </div>`;
+      nodesEl.appendChild(node);
+
+      nodePos[c.name] = { x, y, w: COL_W, h: ROW_H, cx: x + COL_W/2, cy: y + ROW_H/2 };
     });
-    html += `</div>`;
   });
 
-  html += `</div>`;
+  // set container height
+  const maxRows = Math.max(...activeTriggers.map(t => byTrigger[t].length));
+  const totalH = 44 + PAD + maxRows * (ROW_H + ROW_GAP) + PAD;
+  const totalW = PAD + activeTriggers.length * (COL_W + COL_GAP) + PAD;
+  nodesEl.style.height = totalH + 'px';
 
-  // risk summary
-  const highRisk = certs.filter(c => c.risk_level === 'high');
-  const medRisk  = certs.filter(c => c.risk_level === 'med');
-  if (highRisk.length || medRisk.length) {
-    html += `<div style="margin-top:10px;padding:8px 10px;background:#0a0608;border:1px solid #7f1d1d40;border-radius:4px">
-      <div style="font-size:9px;color:#f87171;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">⚠ 風險認證</div>`;
-    [...highRisk, ...medRisk].forEach(c => {
-      const rc = riskColors[c.risk_level] || riskColors['low'];
-      html += `<div style="font-size:10px;color:${rc.text};margin:3px 0">
-        <span style="color:#1e5a7a">[${c.risk_level.toUpperCase()}]</span> ${escH(c.name)} — ${escH(c.region||'')}
-        ${c.notes ? `<span style="color:#1e5a7a"> · ${escH(c.notes)}</span>` : ''}
-      </div>`;
+  // ── Draw dependency arrows on canvas ──
+  requestAnimationFrame(() => {
+    const wrap = document.getElementById('certGraphWrap');
+    const canvas = document.getElementById('certCanvas');
+    if (!canvas || !wrap) return;
+    canvas.width  = wrap.offsetWidth  || totalW;
+    canvas.height = wrap.offsetHeight || totalH;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    certs.forEach(c => {
+      if (!c.depends_on || !nodePos[c.name] || !nodePos[c.depends_on]) return;
+      const from = nodePos[c.depends_on];
+      const to   = nodePos[c.name];
+      const rc   = RISK_C[c.risk_level] || RISK_C.low;
+
+      // source: right edge of from node, target: left edge of to node
+      const ax = from.x + from.w;
+      const ay = from.cy;
+      const bx = to.x;
+      const by = to.cy;
+      const mx = (ax + bx) / 2;
+
+      // glow
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.strokeStyle = rc.border;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.bezierCurveTo(mx, ay, mx, by, bx, by);
+      ctx.stroke();
+      // line
+      ctx.globalAlpha = 0.8;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.bezierCurveTo(mx, ay, mx, by, bx, by);
+      ctx.stroke();
+      // arrowhead
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = rc.border;
+      const angle = Math.atan2(by - ay * 0.1, bx - mx);
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-8, -4);
+      ctx.lineTo(-8, 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.restore();
     });
-    html += `</div>`;
-  }
-
-  panel.querySelector('.tab-panel') || panel;
-  // find the existing static content and replace
-  const existingContent = panel.querySelector('div[style*="overflow"]') || panel.children[1];
-  if (existingContent) {
-    existingContent.outerHTML = `<div>${html}</div>`;
-  } else {
-    panel.innerHTML = `<div>${html}</div>`;
-  }
+  });
 }
-
 
 // ─────────────────────────────────────────────
 // CERT TREE TOOLTIPS
@@ -2877,6 +3036,8 @@ function stateToProject(name, schFilename, mrdFilename) {
     version: PSM_VERSION,
     infoData:   STATE._infoData   || {},
     logEntries: STATE._logEntries || [],
+    members:    STATE._members    || [],
+    kb:         STATE._kb         || null,
     tasks: serialTasks,
     lanes: serialLanes,
     mrdResult: STATE.mrdResult || null,
@@ -2923,6 +3084,8 @@ function projectToState(proj) {
   // restore info fields
   STATE._infoData   = proj.infoData   || {};
   STATE._logEntries = proj.logEntries || [];
+  STATE._members    = proj.members    || [];
+  STATE._kb         = proj.kb ? { ...KB_DEFAULT, ...proj.kb } : loadKB();
 }
 
 function saveProjectNow(silent) {
@@ -2969,7 +3132,7 @@ function showHub() {
 function buildChangelogHTML() {
   return `
     <div class="cl-entry">
-      <div class="cl-ver"><span class="cl-ver-num">V0.014</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+      <div class="cl-ver"><span class="cl-ver-num">V0.016</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
       <ul class="cl-items">
         <li class="cl-item">Project Hub：專案卡片首頁，多專案管理</li>
         <li class="cl-item">localStorage 自動儲存（每60秒），開啟App自動還原</li>
@@ -3249,8 +3412,6 @@ const INFO_FIELDS = [
   'inf-panel-vendor','inf-panel-model','inf-panel-type','inf-spec-status',
   'inf-ws','inf-es','inf-cs','inf-mp',
   'inf-panel-notes',
-  'inf-pm','inf-me','inf-ee','inf-lcm','inf-id-contact','inf-sw',
-  'inf-lnv-pm','inf-lnv-me','inf-vendor-contact','inf-cert-contact',
   'inf-sch-ver','inf-sch-date','inf-mrd-ver','inf-mrd-date'
 ];
 
@@ -3283,6 +3444,7 @@ function saveInfoFields() {
   if (!STATE.tasks.length) return;
   STATE._infoData = getInfoData();
   STATE._logEntries = STATE._logEntries || [];
+  STATE._members = STATE._members || [];
   saveProjectNow(false);
   const el = document.getElementById('infoSavedAt');
   if (el) el.textContent = `💾 已儲存 ${new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}`;
@@ -3290,6 +3452,8 @@ function saveInfoFields() {
 
 function loadInfoFields() {
   if (STATE._infoData) setInfoData(STATE._infoData);
+  initMembers();
+  renderMemberList();
   renderLogList();
   // auto-fill project name from appTitle if empty
   const nameEl = document.getElementById('inf-proj-name');
@@ -3353,6 +3517,439 @@ function renderLogList() {
 }
 
 // Info fields now handled inside stateToProject and projectToState directly
+
+
+// ═════════════════════════════════════════════
+// KNOWLEDGE BASE (KB)
+// ═════════════════════════════════════════════
+const KB_DEFAULT = {
+  functions: {
+    PM:     { label:'PM',     color:'#7c3aed', site:'TPE', type:'coordination',
+              keywords:[], desc:'對外窗口、進度管控、簡報產出、跨功能協調' },
+    DM:     { label:'DM',     color:'#0ea5e9', site:'TPE', type:'design_lead',
+              keywords:['DM','design','HW','spec','cost','scaler','mainboard'],
+              desc:'HW 定義與設計主導，EE/PD/FW 協同，Scaler 選樣，Cost 比較' },
+    EE:     { label:'EE',     color:'#0ea5e9', site:'TPE', type:'design', under:'DM',
+              keywords:['EE','PCB','Schematic','PCBA','circuit','electrical','qualification'],
+              desc:'電路設計、PCB Layout、PCBA 調試、EE qualification' },
+    PD:     { label:'PD',     color:'#f59e0b', site:'TPE', type:'design', under:'DM',
+              keywords:['Power','PD','PSU','power supply','energy','EPA','ErP','efficiency'],
+              desc:'電源板設計，功耗規格，能效合規（EPA/ErP/CEC）' },
+    FW:     { label:'FW',     color:'#f59e0b', site:'TPE', type:'design', under:'DM',
+              keywords:['FW','firmware','OSD','SW','software','driver','flash','update'],
+              desc:'韌體開發，OSD 功能，One-key update，Scaler FW' },
+    ME:     { label:'ME',     color:'#34d399', site:'TPE', type:'design',
+              keywords:['ME','Tooling','Mockup','3D','mold','ID','mechanical','T1','T2','Tn','tooling'],
+              desc:'機構設計，模具進度（T1→T2→Tn），Mockup，ID 確認' },
+    LCM:    { label:'LCM',   color:'#34d399', site:'TPE', type:'module', buffer_days:6,
+              keywords:['LCM','Panel','OC','OLED','module','assembly','ETA','ETD','SDC'],
+              desc:'Panel 模組窗口，OC 到貨確認，組裝（3~6天），Panel PI 規格' },
+    Packing:{ label:'Packing',color:'#3a7a9a', site:'TPE', type:'design',
+              keywords:['Pack','packing','package','carton','EPS','drop','box'],
+              desc:'包裝設計，Drop Test，ANZ 綠色包裝' },
+    Safety: { label:'Safety', color:'#ef4444', site:'FQ',  type:'cert',
+              keywords:['Safety','CB','FCC','CE','CCC','BIS','SABS','cert','approval','EMC','EMI','agency'],
+              desc:'安規認證送測，NRE 費用管理，認證時程規劃' },
+    MQE:    { label:'MQE',   color:'#5a9aba', site:'FQ',  type:'quality',
+              keywords:['MQE','quality','pixel','defect','SQM'],
+              desc:'製造品質，Panel pixel defect 標準，SQM V4.2' },
+    DQE:    { label:'DQE',   color:'#5a9aba', site:'FQ',  type:'quality',
+              keywords:['DQE','reliability','MTTF','design quality'],
+              desc:'設計品質驗證，MTTF 60K@90% CI，DVT/SIT 驗證問題' },
+    PW:     { label:'PW',    color:'#5a9aba', site:'FQ',  type:'production',
+              keywords:['PW','production','trial','trial run','FQ entry'],
+              desc:'生產工程，試線，FQ 廠端生產準備' },
+    IE:     { label:'IE',    color:'#5a9aba', site:'FQ',  type:'production',
+              keywords:['IE','capacity','volume','44K','production plan'],
+              desc:'產能規劃，Cycle time，44K/8Q 產能確認' },
+    PE:     { label:'PE',    color:'#5a9aba', site:'FQ',  type:'process',
+              keywords:['PE','process','assembly process','ESD'],
+              desc:'製程工程，組裝製程，ESD 管控' },
+    AW:     { label:'AW',    color:'#5a9aba', site:'FQ',  type:'aftermarket',
+              keywords:['AW','warranty','AFR','FRU','after','service'],
+              desc:'售後保固，39個月保固，0.875% AFR，FRU 備料' },
+  },
+  stageRules: {
+    RFQ: {
+      label: 'RFQ',
+      pm_tasks: [
+        'RFQ Spec Review 與 Meeting（2~3 天）',
+        'RFQ Q&A 確認，無 pending items',
+        'RFQ Response 產出（5 天）',
+        '與 DM 進行 Cost Evaluation Review 與比較',
+        '填寫 CPF（Forecast / Selling Price / Tooling / COGS）',
+        '確認 Function Difficulty 等級',
+        '上傳費用計算檔案，送各級簽核',
+      ],
+      prerequisites: [
+        { fn:'DM', item:'Cost Evaluation 完成，Scaler 選樣與比較' },
+        { fn:'ME', item:'Tooling Cost 估算' },
+      ],
+      outputs: ['CPF 送出','RFQ Response 回覆客戶']
+    },
+    KO: {
+      label: 'Kick Off',
+      pm_tasks: [
+        '召集 KO 會議（PM 主持）',
+        '確認並對齊產品規格（MRD 最新版）',
+        '確認各階段開發時程（DVT/SIT/SVT/SoVP/MP）',
+        '確認 TPE + FQ 團隊名單與 Function 窗口',
+        '確認各階段樣品數量（DVT/SIT/SVT 樣品 & 認證用）',
+        '建立 PIF（專案立案單）',
+        '確認 Panel ETD/ETA（WS/ES/CS/MP）與 LCM 組裝 buffer',
+        '確認 NRE 認證費用預算（$111K WW Safety/EMC）',
+        '填寫 PES Project 時程與任務分派',
+      ],
+      prerequisites: [
+        { fn:'PM',  item:'CPF 已通過，專案正式立案' },
+        { fn:'DM',  item:'HW 規格初版確認' },
+        { fn:'LCM', item:'Panel ETA 初步確認（WS 時程）' },
+      ],
+      outputs: ['KO Checklist 完成','PIF 建立','SCH 第一版發出']
+    },
+    DVT: {
+      label: 'DVT',
+      pm_tasks: [
+        '確認 DVT Entry Checklist 全部 OK（所有文件就緒）',
+        '確認 Tooling T1 樣品時程（ME → FQ）',
+        '確認 Panel ES ETA 與 LCM 組裝計畫（ES + 3~6天）',
+        '追蹤 EE qualification 進度（Ace/DM）',
+        '確認 FW 初版準備好（Jet）',
+        '跟進 CB 送測時間規劃（Safety/XP）',
+        '更新 PES Project 時程與里程碑狀態',
+        '準備 DVT 進度報告給 LNV',
+      ],
+      prerequisites: [
+        { fn:'DM',  item:'EE Schematics frozen, PCB Layout approved' },
+        { fn:'ME',  item:'ME 3D drawing approved, Mockup complete' },
+        { fn:'LCM', item:'Panel ETA confirmed (WS/ES available)' },
+        { fn:'FW',  item:'Initial FW version ready for DVT' },
+      ],
+      outputs: ['EE qualification result','ME Tooling T1 sample','Panel ETA lock','DVT 進度報告']
+    },
+    SIT: {
+      label: 'SIT',
+      pm_tasks: [
+        '確認 SIT Entry Checklist：所有文件更新完成',
+        '確認 T1 樣品到位（ME → FQ）',
+        '確認 Panel ES OC 到貨 + LCM 組裝完成（到貨 + 3~6天）',
+        '確認 CB 已在 SIT Build 當天送出（Safety/XP）⚡ 不能晚',
+        '確認 FreeSync Premium Pro 送出（AMD Lab slot 預約）',
+        '確認 G-Sync Compatible 送出（NVIDIA）',
+        '追蹤 PCBA debugging 完成（DM/EE）',
+        '確認 FW stable for SIT（Jet）',
+        '準備 SIT 進度報告與議題清單',
+      ],
+      prerequisites: [
+        { fn:'ME',     item:'T1 sample delivered (Tooling TS complete)' },
+        { fn:'LCM',    item:'Panel OC (ES) arrived + 3~6 days assembly' },
+        { fn:'EE',     item:'PCBA debugging complete' },
+        { fn:'Safety', item:'CB submitted (SIT build day, cannot be late)' },
+        { fn:'FW',     item:'FW stable for SIT' },
+      ],
+      outputs: ['SIT test report','CB submitted','FreeSync/G-Sync initiated','SIT 進度報告']
+    },
+    SVT: {
+      label: 'SVT',
+      pm_tasks: [
+        '確認 SVT Entry Checklist：所有文件與更新完成',
+        '確認 T3 樣品到位（ME → FQ）',
+        '確認 Panel CS OC 到貨 + LCM 組裝（CS + 3~6天）',
+        '確認 CB 完成，CE/FCC/CCC 已送出',
+        '追蹤 SABS（3~6個月）和 BIS（10週）風險，與 LNV 對齊',
+        '確認 FW feature-complete（Jet）',
+        '確認 Packing Drop Test 完成（Avis）',
+        '確認 WHQL driver schedule（11/2~11/13）對齊',
+        '更新 PES / 數位大表 狀態',
+        '準備 SVT 進度報告與認證狀態給 LNV',
+      ],
+      prerequisites: [
+        { fn:'ME',     item:'T3 sample ready' },
+        { fn:'LCM',    item:'Panel CS arrived + assembly' },
+        { fn:'Safety', item:'CB complete, major certs submitted' },
+        { fn:'FW',     item:'FW feature-complete' },
+        { fn:'Packing',item:'Packing drop test complete' },
+      ],
+      outputs: ['SVT test report','Cert reports (CB/FCC/CE)','FW release candidate','SVT 進度報告']
+    },
+    SOVP: {
+      label: 'SoVP',
+      pm_tasks: [
+        '確認 Panel MP OC 到貨 + LCM 組裝計畫',
+        '確認所有認證狀態（SABS/BIS 特別注意，高風險）',
+        '確認 MQE Panel pixel defect 標準執行（林清玉）',
+        '確認 IE 44K/8Q 產能規劃（孫洪波）',
+        '確認 FQ 試線（Trial Run）計畫（張清峰/PW）',
+        '確認最終包裝通過（Avis）',
+        '確認 FRU / 維修備料計畫（陳萍/AW）',
+        '確認 Amazon ISTA 送出（Lenovo 提供 ASIN 後）',
+        '準備 SoVP → MP 移轉文件',
+        '更新 PES / 數位大表 最終狀態',
+      ],
+      prerequisites: [
+        { fn:'LCM',    item:'Panel MP (OC) arrived + assembly' },
+        { fn:'Safety', item:'All certs approved (SABS/BIS risk noted)' },
+        { fn:'MQE',    item:'Panel pixel defect standard confirmed' },
+        { fn:'IE',     item:'44K/8Q capacity confirmed' },
+        { fn:'Packing',item:'Final packing approved' },
+      ],
+      outputs: ['SoVP exit','MP readiness confirmed','移轉文件完成']
+    },
+    MP: {
+      label: 'MP',
+      pm_tasks: [
+        '確認 MP1 裝機完成',
+        '跟進 MP1 問題點與樣機測試報告',
+        '確認所有認證報告齊全（含 SABS/BIS 最終確認）',
+        '確認 SS LSSC 出貨準備',
+        '歸檔專案文件（MRD / SCH / 認證報告）',
+      ],
+      prerequisites: [
+        { fn:'Safety', item:'All certification reports complete' },
+        { fn:'MQE',    item:'MP quality sign-off' },
+        { fn:'IE',     item:'Production line ready' },
+      ],
+      outputs: ['MP1 出貨','認證報告歸檔','專案結案']
+    }
+  },
+  taskLevelRules: {
+    0: { fn:'PM', label:'PM/DM 協調層' },   // Level 0 = phase/summary tasks
+  }
+};
+
+// Load KB from localStorage or use default
+function loadKB() {
+  try {
+    const stored = localStorage.getItem('psmv_kb');
+    return stored ? { ...KB_DEFAULT, ...JSON.parse(stored) } : KB_DEFAULT;
+  } catch { return KB_DEFAULT; }
+}
+STATE._kb = loadKB();
+
+// ─────────────────────────────────────────────
+// MEMBER MANAGEMENT
+// ─────────────────────────────────────────────
+const DEFAULT_MEMBERS = [
+  { id:'m1', fn:'PM',     name:'', site:'TPE', freq:'core',
+    desc:'對外窗口、進度管控、簡報產出、跨功能協調（PM 為本人）',
+    phases:['now','dvt','sit','svt','sovp'] },
+  { id:'m2', fn:'DM',     name:'', site:'TPE', freq:'core',
+    desc:'HW 定義主導，EE/PD/FW 協同，Scaler 選樣，Cost 比較，技術決策核心',
+    phases:['now','dvt','sit','svt'] },
+  { id:'m3', fn:'EE',     name:'', tpe_name:'', fq_name:'', site:'TPE', freq:'core',
+    desc:'電路設計，PCB Layout，PCBA 調試，EE qualification，每個 stage gate 的 EE 結果',
+    phases:['now','dvt','sit','svt'] },
+  { id:'m4', fn:'ME',     name:'', tpe_name:'', fq_name:'', site:'TPE', freq:'core',
+    desc:'機構設計，模具進度（T1→T2→Tn），Mockup，ID 確認，共用模具確認',
+    phases:['now','dvt','sit','svt','sovp'] },
+  { id:'m5', fn:'FW',     name:'', tpe_name:'', fq_name:'', site:'TPE', freq:'core',
+    desc:'韌體開發，OSD 功能修改，One-key update，Legion Space，Scaler/HUB FW',
+    phases:['now','dvt','sit','svt'] },
+  { id:'m6', fn:'LCM',   name:'', site:'TPE', freq:'core',
+    desc:'Panel 模組窗口，OC ETA 確認，PI 規格，T-CON 問題，組裝（3~6天 buffer）',
+    phases:['now','dvt','sit'] },
+  { id:'m7', fn:'PD',    name:'', tpe_name:'', fq_name:'', site:'TPE', freq:'close',
+    desc:'電源板設計，功耗規格（TBD→確認），能效合規（ErP/CEC/EPA）',
+    phases:['dvt','sit'] },
+  { id:'m8', fn:'Packing',name:'', tpe_name:'', fq_name:'', site:'TPE', freq:'close',
+    desc:'包裝設計，New One Lenovo pizza box，EPS 緩衝，ANZ 綠色包裝，Drop Test',
+    phases:['sit','svt','sovp'] },
+  { id:'m9', fn:'Safety', name:'', site:'FQ',  freq:'close',
+    desc:'安規認證送測，NRE $111K，WW Safety/EMC/HDMI/DP，認證樣品安排',
+    phases:['dvt','sit','svt'] },
+  { id:'m10',fn:'MQE',   name:'', site:'FQ',  freq:'close',
+    desc:'製造品質，Panel pixel defect（Bright≤1, Dark≤5, ZBD 95%），SQM V4.2',
+    phases:['svt','sovp'] },
+  { id:'m11',fn:'DQE',   name:'', site:'FQ',  freq:'async',
+    desc:'設計品質驗證，MTTF 60K@90% CI，DVT/SIT 驗證問題（出問題才深度介入）',
+    phases:['dvt','sit'] },
+  { id:'m12',fn:'PW',    name:'', site:'FQ',  freq:'async',
+    desc:'生產工程，試線（trial run），FQ 廠生產準備（Tooling to FQ 12/5）',
+    phases:['sovp'] },
+  { id:'m13',fn:'IE',    name:'', site:'FQ',  freq:'async',
+    desc:'產能規劃，44K/8Q，Cycle time，廠線配置，量產前產能確認',
+    phases:['svt','sovp'] },
+  { id:'m14',fn:'PE',    name:'', site:'FQ',  freq:'async',
+    desc:'製程工程，組裝製程，ESD 15kV/8kV，熱測試製程（DVT 組裝問題才介入）',
+    phases:['dvt','sit'] },
+  { id:'m15',fn:'AW',    name:'', site:'FQ',  freq:'async',
+    desc:'售後保固，39個月，0.875% AFR，FRU 備料（量產後才主要介入）',
+    phases:['sovp'] },
+];
+
+function initMembers() {
+  if (!STATE._members || !STATE._members.length) {
+    STATE._members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+  }
+}
+
+function renderMemberList() {
+  initMembers();
+  const list = document.getElementById('memberList');
+  if (!list) return;
+
+  const FREQ_LABELS = {
+    core:  { label:'核心接觸', color:'#7c3aed' },
+    close: { label:'密切協作', color:'#0ea5e9' },
+    async: { label:'專項對接', color:'#3a7a9a' },
+  };
+
+  const PHASE_LABELS = {
+    now:'現在', dvt:'DVT', sit:'SIT', svt:'SVT', sovp:'SoVP'
+  };
+  const PHASE_COLORS = {
+    now:'mphase-now', dvt:'mphase-dvt', sit:'mphase-sit', svt:'mphase-svt', sovp:'mphase-sovp'
+  };
+
+  // Group by freq
+  const groups = { core:[], close:[], async:[] };
+  STATE._members.forEach(m => { (groups[m.freq] || groups.async).push(m); });
+
+  let html = '';
+  ['core','close','async'].forEach(freq => {
+    const items = groups[freq];
+    if (!items.length) return;
+    const fl = FREQ_LABELS[freq];
+    html += `<div style="font-size:9px;color:${fl.color};letter-spacing:0.08em;text-transform:uppercase;margin:10px 0 5px;padding-bottom:3px;border-bottom:1px solid ${fl.color}30">${fl.label}</div>`;
+    items.forEach(m => {
+      const kb = STATE._kb.functions[m.fn] || {};
+      const fnColor = kb.color || '#5a9aba';
+      const fnClass = 'member-fn-' + (m.fn||'').toLowerCase();
+      const freqClass = 'freq-' + freq;
+      const siteCls = m.site === 'TPE' ? 'site-tpe' : 'site-fq';
+      const displayName = m.name || `(${m.fn} 待填)`;
+      const tpeFq = m.tpe_name && m.fq_name ? ` TPE: ${m.tpe_name} / FQ: ${m.fq_name}` : '';
+      html += `<div class="member-card-dark ${freqClass}" id="mc_${m.id}">
+        <div class="member-card-top">
+          <div class="member-fn-badge ${fnClass}" style="border-color:${fnColor}40;color:${fnColor}">${escH(m.fn)}</div>
+          <div class="member-body">
+            <div class="member-name-row">
+              <span class="member-name">${escH(displayName)}${tpeFq?`<span style="font-size:9px;color:#1e5a7a;font-weight:400"> · ${escH(tpeFq)}</span>`:''}</span>
+              <span class="member-site ${siteCls}">${m.site}</span>
+            </div>
+            <div class="member-desc">${escH(m.desc||'')}</div>
+            <div class="member-phases">
+              ${(m.phases||[]).map(p=>`<span class="mphase ${PHASE_COLORS[p]||''}">${PHASE_LABELS[p]||p}</span>`).join('')}
+            </div>
+            <div class="member-actions">
+              <button class="member-edit-btn" onclick="editMember('${m.id}')">✎ 編輯</button>
+              <button class="member-edit-btn del" onclick="deleteMember('${m.id}')">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+
+  list.innerHTML = html;
+}
+
+function editMember(id) {
+  initMembers();
+  const m = STATE._members.find(x => x.id === id);
+  if (!m) return;
+  const el = document.getElementById('mc_' + id);
+  if (!el) return;
+
+  const PHASES = ['now','dvt','sit','svt','sovp'];
+  const PHASE_LABELS = { now:'現在', dvt:'DVT', sit:'SIT', svt:'SVT', sovp:'SoVP' };
+  const FNS = Object.keys(STATE._kb.functions);
+
+  el.outerHTML = `<div class="member-edit-form" id="mef_${id}">
+    <div class="member-edit-grid">
+      <div class="info-field">
+        <div class="info-label">Function</div>
+        <select class="info-select" id="mef_fn_${id}">
+          ${FNS.map(f=>`<option value="${f}" ${m.fn===f?'selected':''}>${f}</option>`).join('')}
+        </select>
+      </div>
+      <div class="info-field">
+        <div class="info-label">頻率</div>
+        <select class="info-select" id="mef_freq_${id}">
+          <option value="core"  ${m.freq==='core' ?'selected':''}>核心接觸</option>
+          <option value="close" ${m.freq==='close'?'selected':''}>密切協作</option>
+          <option value="async" ${m.freq==='async'?'selected':''}>專項對接</option>
+        </select>
+      </div>
+      <div class="info-field">
+        <div class="info-label">姓名 / 窗口</div>
+        <input class="info-input" id="mef_name_${id}" value="${escH(m.name||'')}">
+      </div>
+      <div class="info-field">
+        <div class="info-label">Site</div>
+        <select class="info-select" id="mef_site_${id}">
+          <option value="TPE" ${m.site==='TPE'?'selected':''}>TPE 台北</option>
+          <option value="FQ"  ${m.site==='FQ' ?'selected':''}>FQ 福清</option>
+          <option value="Both" ${m.site==='Both'?'selected':''}>TPE + FQ</option>
+        </select>
+      </div>
+      <div class="info-field">
+        <div class="info-label">TPE 窗口（如有）</div>
+        <input class="info-input" id="mef_tpe_${id}" value="${escH(m.tpe_name||'')}">
+      </div>
+      <div class="info-field">
+        <div class="info-label">FQ 窗口（如有）</div>
+        <input class="info-input" id="mef_fq_${id}" value="${escH(m.fq_name||'')}">
+      </div>
+      <div class="info-field wide">
+        <div class="info-label">職責說明</div>
+        <textarea class="info-textarea" id="mef_desc_${id}" style="min-height:48px">${escH(m.desc||'')}</textarea>
+      </div>
+      <div class="info-field wide">
+        <div class="info-label">負責階段</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px">
+          ${PHASES.map(p=>`<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#5a8aaa;cursor:pointer">
+            <input type="checkbox" id="mef_p_${id}_${p}" ${(m.phases||[]).includes(p)?'checked':''} style="accent-color:#0ea5e9"> ${PHASE_LABELS[p]}
+          </label>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="member-edit-btns">
+      <button class="btn" onclick="cancelEditMember('${id}')">取消</button>
+      <button class="btn active" onclick="saveMember('${id}')">儲存</button>
+    </div>
+  </div>`;
+}
+
+function saveMember(id) {
+  initMembers();
+  const idx = STATE._members.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const PHASES = ['now','dvt','sit','svt','sovp'];
+  STATE._members[idx] = {
+    ...STATE._members[idx],
+    fn:       document.getElementById('mef_fn_'+id)?.value || '',
+    freq:     document.getElementById('mef_freq_'+id)?.value || 'async',
+    name:     document.getElementById('mef_name_'+id)?.value || '',
+    site:     document.getElementById('mef_site_'+id)?.value || 'TPE',
+    tpe_name: document.getElementById('mef_tpe_'+id)?.value || '',
+    fq_name:  document.getElementById('mef_fq_'+id)?.value || '',
+    desc:     document.getElementById('mef_desc_'+id)?.value || '',
+    phases:   PHASES.filter(p => document.getElementById(`mef_p_${id}_${p}`)?.checked),
+  };
+  renderMemberList();
+  saveInfoFields();
+}
+
+function cancelEditMember(id) { renderMemberList(); }
+
+function deleteMember(id) {
+  if (!confirm('確定刪除此成員？')) return;
+  STATE._members = (STATE._members||[]).filter(x => x.id !== id);
+  renderMemberList();
+  saveInfoFields();
+}
+
+function addMember() {
+  initMembers();
+  const newId = 'm_' + Date.now();
+  STATE._members.push({
+    id: newId, fn:'', name:'', site:'TPE', freq:'async', desc:'', phases:[]
+  });
+  renderMemberList();
+  // scroll to bottom and open edit
+  setTimeout(() => editMember(newId), 50);
+}
 
 </script>
 </body>
