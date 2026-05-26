@@ -1215,7 +1215,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
   <nav class="mob-nav" id="mobNav">
     <div class="mob-nav-inner">
       <button class="mob-nav-btn active" id="mobn-dash" onclick="mobSwitch('dash')">
-        <span class="mob-nav-btn-icon">◉</span>儀表板
+        <span class="mob-nav-btn-icon">◉</span>Dashboard
       </button>
       <button class="mob-nav-btn" id="mobn-gantt" onclick="mobSwitch('gantt')">
         <span class="mob-nav-btn-icon">⬡</span>時程
@@ -1873,11 +1873,11 @@ function buildActionSuggestion(futureMilestones, elapsed, totalDays, pct) {
         PM Checklist — ${rule.label}
       </div>
       <div style="display:flex;flex-direction:column;gap:3px">
-        ${tasksToShow.map(t => `<div style="display:flex;align-items:flex-start;gap:5px;font-size:10px;color:#5a8aaa">
-          <span style="color:#1e5a7a;flex-shrink:0;margin-top:1px">○</span>
+        ${tasksToShow.map((t,i) => `<div class="pm-task-item" style="display:${!showAll && i>=5?'none':'flex'};align-items:flex-start;gap:5px;font-size:10px;color:#8abcc8">
+          <span style="color:#4a8aa0;flex-shrink:0;margin-top:1px">○</span>
           <span>${escH(t)}</span>
         </div>`).join('')}
-        ${!showAll && pmTasks.length > 5 ? `<div style="font-size:9px;color:#1e5a7a;margin-top:2px">…另有 ${pmTasks.length-5} 項（7天內顯示全部）</div>` : ''}
+        ${!showAll && pmTasks.length > 5 ? `<div id="pmShowMore" onclick="pmToggleAll(this, ${JSON.stringify(pmTasks).replace(/"/g,'&quot;')})" style="font-size:9px;color:#0ea5e9;margin-top:4px;cursor:pointer;user-select:none">▼ 另有 ${pmTasks.length-5} 項（點擊展開）</div>` : ''}
       </div>
     </div>`;
   }
@@ -4153,7 +4153,10 @@ function addMember() {
 // ═════════════════════════════════════════════
 // MOBILE MODE
 // ═════════════════════════════════════════════
-function isMobile() { return window.innerWidth < 768; }
+function isMobile() {
+  return window.innerWidth < 768 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
 
 let _mobView = 'dash'; // 'dash' | 'gantt' | 'mrd' | 'info'
 
@@ -4169,14 +4172,31 @@ function mobSwitch(view) {
   const tabs   = document.querySelector('.tabs');
   const panels = document.querySelectorAll('.tab-panel');
 
+  // IDs to hide when showing mobile dash
+  const DESKTOP_PANELS = ['statusPanel','progWrap','msList','actionBar'];
+
   if (view === 'dash') {
     if (dash) dash.style.display = 'flex';
+    // hide desktop status panels (avoid duplication)
+    DESKTOP_PANELS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
     // hide tab content area
     if (tabs) tabs.style.display = 'none';
     panels.forEach(p => p.style.display = 'none');
     buildMobileDash();
   } else {
     if (dash) dash.style.display = 'none';
+    // restore desktop panels
+    DESKTOP_PANELS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'actionBar') el.className = 'action-bar visible';
+      else if (id === 'statusPanel') el.className = 'status-panel';
+      else if (id === 'progWrap') el.className = 'prog-wrap';
+      else if (id === 'msList') el.className = 'ms-list';
+    });
     if (tabs) tabs.style.display = 'flex';
     // switch to the right tab
     const tabMap = { gantt:'gantt', mrd:'mrd', info:'info' };
@@ -4254,7 +4274,7 @@ function buildMobileDash() {
         <div class="mob-cl-dot${urgent?' urgent':''}"></div>
         <span>${escH(t)}</span>
       </div>`).join('')}
-      ${!urgent && rule.pm_tasks.length > 4 ? `<div style="font-size:9px;color:#1e5a7a;margin-top:4px">…另有 ${rule.pm_tasks.length - 4} 項</div>` : ''}`;
+      ${!urgent && rule.pm_tasks.length > 4 ? '<div id="mobPmMore" onclick="mobTogglePmAll(this)" data-tasks=\'' + JSON.stringify(rule.pm_tasks).replace(/'/g,"&#39;") + '\' style="font-size:9px;color:#0ea5e9;margin-top:4px;cursor:pointer">▼ 另有 ' + (rule.pm_tasks.length - 4) + ' 項（點擊展開）</div>' : ''}`;
   } else {
     clEl.style.display = 'none';
   }
@@ -4286,12 +4306,23 @@ function buildMobileDash() {
 function initMobileMode() {
   if (!isMobile()) return;
   if (typeof _mobView === 'undefined') return;
-  // show mobile dashboard by default
+  _mobView = 'dash';
+  // update nav
+  ['dash','gantt','mrd','info'].forEach(v => {
+    const btn = document.getElementById('mobn-' + v);
+    if (btn) btn.className = 'mob-nav-btn' + (v === 'dash' ? ' active' : '');
+  });
+  // show mobile dashboard
   const dash = document.getElementById('mobileDash');
   const tabs = document.querySelector('.tabs');
   if (dash) dash.style.display = 'flex';
   if (tabs) tabs.style.display = 'none';
   document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  // hide desktop status panels to avoid duplication
+  ['statusPanel','progWrap','msList','actionBar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
   // build dash if project loaded
   if (STATE.tasks.length) buildMobileDash();
 }
@@ -4302,6 +4333,59 @@ window.addEventListener('resize', () => {
     initMobileMode();
   }
 });
+
+
+function pmToggleAll(el, allTasks) {
+  const container = el.parentNode.querySelector('div[style*="flex-direction"]') ||
+                    el.previousElementSibling;
+  if (!container) return;
+  const isExpanded = el.dataset.expanded === '1';
+  if (isExpanded) {
+    // collapse
+    const items = container.querySelectorAll('.pm-task-item');
+    items.forEach((item, i) => { if (i >= 5) item.style.display = 'none'; });
+    el.textContent = `▼ 另有 ${allTasks.length - 5} 項（點擊展開）`;
+    el.dataset.expanded = '0';
+  } else {
+    // expand all
+    const items = container.querySelectorAll('.pm-task-item');
+    items.forEach(item => { item.style.display = 'flex'; });
+    el.textContent = '▲ 收合';
+    el.dataset.expanded = '1';
+  }
+}
+
+function mobTogglePmAll(el) {
+  try {
+    const allTasks = JSON.parse(el.dataset.tasks || '[]');
+    const clEl = document.getElementById('mobChecklist');
+    const isExpanded = el.dataset.expanded === '1';
+    const label = clEl.querySelector('.mob-cl-label');
+    const existingItems = clEl.querySelectorAll('.mob-cl-item');
+
+    if (isExpanded) {
+      // collapse to 4
+      existingItems.forEach((item, i) => { if (i >= 4) item.style.display = 'none'; });
+      el.textContent = `▼ 另有 ${allTasks.length - 4} 項（點擊展開）`;
+      el.dataset.expanded = '0';
+    } else {
+      // show all
+      existingItems.forEach(item => { item.style.display = 'flex'; });
+      // add missing items if needed
+      if (existingItems.length < allTasks.length) {
+        const more = document.createDocumentFragment();
+        allTasks.slice(existingItems.length).forEach(t => {
+          const d = document.createElement('div');
+          d.className = 'mob-cl-item';
+          d.innerHTML = `<div class="mob-cl-dot"></div><span>${escH(t)}</span>`;
+          el.before(d);
+        });
+      }
+      el.textContent = '▲ 收合';
+      el.dataset.expanded = '1';
+    }
+  } catch(e) { console.error(e); }
+}
 
 </script>
 </body>
