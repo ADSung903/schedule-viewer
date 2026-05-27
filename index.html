@@ -549,7 +549,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="hub-title">Project Schedule Manager</div>
     <div class="hub-sub">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.021</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.022</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -585,7 +585,7 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
     <div class="upload-title">Project Schedule Viewer</div>
     <div class="upload-sub" style="margin-top:4px">GANTT · CRITICAL PATH · MRD ANALYSIS · CERT TREE</div>
     <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <div class="version-badge">Version <span class="version-num">V0.021</span></div>
+      <div class="version-badge">Version <span class="version-num">V0.022</span></div>
       <div class="version-badge">2026/05/25</div>
     </div>
   </div>
@@ -2059,28 +2059,66 @@ function buildActionSuggestion(futureMilestones, elapsed, totalDays, pct) {
     </div>`;
   }
 
-  // ── Prerequisites from other functions ──
-  if (prereqs.length > 0 && diff <= 14) {
-    taskListHtml += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #0d2d4a">
-      <div style="font-size:8px;color:#1e5a7a;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">
-        需各 Function 到位
+  // ── Prerequisites: Function × 人員 × SCH任務 × 日期 ──
+  if (prereqs.length > 0 && diff <= 30) {
+    const kb = STATE._kb || KB_DEFAULT;
+
+    // find SCH tasks related to each function (by keyword matching)
+    function findRelatedTasks(fnKey) {
+      const fnDef = kb.functions[fnKey];
+      if (!fnDef || !fnDef.keywords || !fnDef.keywords.length) return [];
+      const kws = fnDef.keywords.map(k => k.toLowerCase());
+      return STATE.tasks.filter(t => {
+        if (!t.startDate || t.ms) return false;
+        const n = t.n.toLowerCase();
+        return kws.some(k => n.includes(k));
+      }).sort((a,b) => a.startDate - b.startDate).slice(0, 3);
+    }
+
+    const prereqRows = prereqs.map(p => {
+      const fnDef  = kb.functions[p.fn] || {};
+      const fnColor = fnDef.color || '#5a9aba';
+      const member = (STATE._members||[]).find(m => m.fn === p.fn);
+      const name   = member && member.name ? member.name : '';
+      const tpeFq  = member && member.tpe_name && member.fq_name
+        ? member.tpe_name + ' / ' + member.fq_name : '';
+      const email  = member && member.email ? member.email : '';
+      const relTasks = findRelatedTasks(p.fn);
+
+      // name display
+      const nameStr = tpeFq || name;
+      const emailBtn = email
+        ? `<a href="mailto:${email}" style="color:#0ea5e9;font-size:9px;text-decoration:none;margin-left:4px" onclick="event.stopPropagation()">✉</a>`
+        : '';
+
+      // related SCH tasks
+      const taskRows = relTasks.map(t => {
+        const d = Math.round((t.startDate - TODAY) / 86400000);
+        const dStr = d < 0 ? `<span style="color:#f87171">${Math.abs(d)}天前</span>`
+          : d <= 7 ? `<span style="color:#fbbf24">還有${d}天</span>`
+          : `<span style="color:#5a9aba">還有${d}天</span>`;
+        return `<div style="display:flex;align-items:center;gap:5px;padding:2px 0 2px 10px;font-size:9px;color:#4a7a9a;border-left:1px solid ${fnColor}30">
+          <span style="color:#1e5a7a">#${t.id}</span>
+          <span style="flex:1;color:#6a9aba">${escH(t.n.length>35?t.n.slice(0,35)+'…':t.n)}</span>
+          <span>${dStr}（${t.s}）</span>
+        </div>`;
+      }).join('');
+
+      return `<div style="background:#07090f;border:1px solid ${fnColor}30;border-radius:4px;padding:7px 9px;margin-bottom:5px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:${relTasks.length||p.item?'5px':'0'}">
+          <span style="font-size:9px;padding:1px 7px;border-radius:2px;background:${fnColor}22;color:${fnColor};border:1px solid ${fnColor}40;font-weight:500;flex-shrink:0">${escH(p.fn)}</span>
+          ${nameStr ? `<span style="font-size:10px;color:#c8e6ff">${escH(nameStr)}${emailBtn}</span>` : ''}
+        </div>
+        <div style="font-size:10px;color:#7ab4c8;margin-bottom:${relTasks.length?'5px':'0'};padding-left:2px">→ ${escH(p.item)}</div>
+        ${taskRows}
+      </div>`;
+    }).join('');
+
+    taskListHtml += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid #0d2d4a">
+      <div style="font-size:8px;color:#6ab4c8;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:7px">
+        各 Function 確認事項
       </div>
-      <div style="display:flex;flex-direction:column;gap:3px">
-        ${prereqs.map(p => {
-          const kb = STATE._kb || KB_DEFAULT;
-          const fnColor = (kb.functions[p.fn] || {}).color || '#5a9aba';
-          // find member contact
-          const member = (STATE._members||[]).find(m => m.fn === p.fn);
-          const contact = member && member.name ? ` (${member.name})` : '';
-          const emailLink = member && member.email
-            ? ` <a href="mailto:${member.email}" style="color:#0ea5e9;font-size:9px;text-decoration:none" onclick="event.stopPropagation()">✉</a>`
-            : '';
-          return `<div style="display:flex;align-items:flex-start;gap:5px;font-size:10px">
-            <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${fnColor}22;color:${fnColor};border:1px solid ${fnColor}40;flex-shrink:0;margin-top:1px">${escH(p.fn)}${escH(contact)}${emailLink}</span>
-            <span style="color:#5a8aaa">${escH(p.item)}</span>
-          </div>`;
-        }).join('')}
-      </div>
+      ${prereqRows}
     </div>`;
   }
 
@@ -3108,7 +3146,7 @@ function exportExcel() {
 
   const s4 = [
     ['Project',          proj],
-    ['App Version',      'V0.021'],
+    ['App Version',      'V0.022'],
     ['Export Date',      today],
 
     [''],
@@ -3133,8 +3171,108 @@ function exportExcel() {
   ws4['!cols'] = [{wch:20},{wch:40}];
   XLSX.utils.book_append_sheet(wb, ws4, 'Summary');
 
-  XLSX.writeFile(wb, `${proj}_Report_${today.replace(/\//g,'-')}.xlsx`);
-  log('ok', `匯出完成`);
+  // ════════════════ SHEET 5: Action Items ════════════════
+  const kb = STATE._kb || KB_DEFAULT;
+  const s5 = [['優先','Function','負責人 (TPE)','負責人 (FQ)','Email','事項','截止日','來源']];
+
+  // from stage rules: next 3 milestones
+  const upcomingMs = STATE.tasks.filter(t => t.ms && t.startDate >= TODAY)
+    .sort((a,b) => a.startDate - b.startDate).slice(0, 3);
+
+  upcomingMs.forEach(ms => {
+    const rule = matchStageRule(ms.n);
+    if (!rule) return;
+    const diff = Math.round((ms.startDate - TODAY) / 86400000);
+    const pri = diff <= 7 ? '🔴' : diff <= 14 ? '🟡' : '🔵';
+
+    // PM tasks
+    (rule.pm_tasks || []).forEach(task => {
+      s5.push([pri, 'PM', '', '', '', task, ms.s, 'SCH里程碑: ' + ms.n]);
+    });
+
+    // prerequisites
+    (rule.prerequisites || []).forEach(p => {
+      const member = (STATE._members||[]).find(m => m.fn === p.fn);
+      s5.push([
+        pri, p.fn,
+        member ? (member.tpe_name || member.name || '') : '',
+        member ? (member.fq_name || '') : '',
+        member ? (member.email || '') : '',
+        p.item, ms.s,
+        'SCH里程碑: ' + ms.n
+      ]);
+    });
+  });
+
+  // from SCH: overdue tasks and near-deadline tasks
+  STATE.tasks.filter(t => !t.ms && t.startDate).forEach(t => {
+    const diff = Math.round((t.finishDate - TODAY) / 86400000);
+    if (diff < 0 || diff > 30) return; // only within 30 days
+    const pri = diff <= 0 ? '🔴' : diff <= 7 ? '🟡' : '🔵';
+    // find matching function by keywords
+    let fnMatch = '';
+    Object.entries(kb.functions).forEach(([fn, def]) => {
+      if (fnMatch) return;
+      if ((def.keywords||[]).some(k => t.n.toLowerCase().includes(k.toLowerCase()))) fnMatch = fn;
+    });
+    if (!fnMatch) return;
+    const member = (STATE._members||[]).find(m => m.fn === fnMatch);
+    s5.push([
+      pri, fnMatch,
+      member ? (member.tpe_name || member.name || '') : '',
+      member ? (member.fq_name || '') : '',
+      member ? (member.email || '') : '',
+      t.n, t.f || t.s,
+      'SCH Task #' + t.id
+    ]);
+  });
+
+  const ws5 = XLSX.utils.aoa_to_sheet(s5);
+  ws5['!cols'] = [{wch:5},{wch:10},{wch:16},{wch:16},{wch:26},{wch:50},{wch:12},{wch:30}];
+  ws5['!rows'] = [{hpt:18}];
+  ws5['!freeze'] = {xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+  XLSX.utils.book_append_sheet(wb, ws5, '🔔 Action Items');
+
+  // ════════════════ SHEET 6: Team ════════════════
+  const s6 = [['Function','頻率','姓名','TPE 窗口','FQ 窗口','Site','Email','職責','負責階段']];
+  (STATE._members || []).forEach(m => {
+    const FREQ = {core:'核心接觸', close:'密切協作', async:'專項對接'};
+    s6.push([
+      m.fn, FREQ[m.freq]||m.freq, m.name||'',
+      m.tpe_name||'', m.fq_name||'', m.site||'',
+      m.email||'', m.desc||'',
+      (m.phases||[]).join(', ')
+    ]);
+  });
+  const ws6 = XLSX.utils.aoa_to_sheet(s6);
+  ws6['!cols'] = [{wch:10},{wch:10},{wch:14},{wch:14},{wch:14},{wch:6},{wch:26},{wch:50},{wch:24}];
+  ws6['!rows'] = [{hpt:18}];
+  ws6['!freeze'] = {xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+  XLSX.utils.book_append_sheet(wb, ws6, '👥 Team');
+
+  // ════════════════ SHEET 7: Sample Plan ════════════════
+  const sampleData = STATE._sampleData || {};
+  if (Object.keys(sampleData).length > 0) {
+    const SCOLS = ['EE','ME','FW_SW','PWR_ME','Safety','EMI','DQE','MQE','LNV','BJ_SZ','Safety_EMI','Others','LCM'];
+    const s7 = [['Phase',...SCOLS.map(c=>c.replace('_','/')), 'Total']];
+    ['DVT','SIT','SVT'].forEach(phase => {
+      let total = 0;
+      const row = [phase];
+      SCOLS.forEach(col => {
+        const v = parseInt(sampleData['sp_'+phase+'_'+col]||'0')||0;
+        total += v;
+        row.push(v || '');
+      });
+      row.push(total || '');
+      s7.push(row);
+    });
+    const ws7 = XLSX.utils.aoa_to_sheet(s7);
+    ws7['!cols'] = [{wch:6},...SCOLS.map(()=>({wch:8})),{wch:7}];
+    XLSX.utils.book_append_sheet(wb, ws7, '🔬 Sample Plan');
+  }
+
+  XLSX.writeFile(wb, proj + '_Report_' + today.replace(/\//g,'-') + '.xlsx');
+  log('ok', '匯出完成');
 }
 
 
@@ -3602,7 +3740,7 @@ function showHub() {
 function buildChangelogHTML() {
   return `
     <div class="cl-entry">
-      <div class="cl-ver"><span class="cl-ver-num">V0.021</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
+      <div class="cl-ver"><span class="cl-ver-num">V0.022</span><span class="cl-ver-date">2026/05/25</span><span class="cl-ver-tag cl-tag-feat">FEAT</span></div>
       <ul class="cl-items">
         <li class="cl-item">Project Hub：專案卡片首頁，多專案管理</li>
         <li class="cl-item">localStorage 自動儲存（每60秒），開啟App自動還原</li>
