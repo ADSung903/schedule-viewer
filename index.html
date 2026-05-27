@@ -512,6 +512,28 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 .sample-total-row td{background:#06101a;border-top:1px solid #0d3a5a}
 .sample-note{font-size:9px;color:#3a7a9a;margin-top:6px;line-height:1.6}
 
+
+/* ── Column Mapping Modal ── */
+#colMapModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center}
+#colMapModal.visible{display:flex}
+.col-map-box{background:#06101a;border:1px solid #0ea5e9;border-radius:8px;padding:20px 24px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px #0ea5e930}
+.col-map-title{font-size:13px;font-weight:500;color:#7dd3fc;margin-bottom:4px;letter-spacing:0.06em}
+.col-map-sub{font-size:10px;color:#3a7a9a;margin-bottom:16px}
+.col-map-table{width:100%;border-collapse:collapse;margin-bottom:16px}
+.col-map-table th{font-size:9px;color:#4a8aa0;letter-spacing:0.08em;text-transform:uppercase;padding:5px 8px;border-bottom:1px solid #0d2d4a;text-align:left}
+.col-map-table td{padding:6px 8px;border-bottom:1px solid #091828;font-size:11px;vertical-align:middle}
+.col-map-table tr:last-child td{border:none}
+.col-field{color:#c8e6ff;font-weight:500;min-width:100px}
+.col-detected{color:#34d399;font-size:10px}
+.col-detected.miss{color:#f87171}
+.col-detected.optional{color:#5a9aba}
+.col-select{background:#060a10;border:1px solid #0d2d4a;border-radius:3px;color:#daeeff;padding:4px 6px;font-size:10px;outline:none;min-width:140px}
+.col-select:focus{border-color:#0ea5e9}
+.col-req-badge{font-size:8px;padding:1px 5px;border-radius:2px;margin-left:5px}
+.col-req{background:#1a0e2e;color:#a78bfa;border:1px solid #7c3aed40}
+.col-opt{background:#0a1520;color:#3a7a9a;border:1px solid #0d2d4a}
+.col-map-btns{display:flex;gap:8px;justify-content:flex-end}
+
 /* ── Parse log ── */
 #parseLog{display:none;margin-top:8px;background:#06101a;border:1px solid #0d2d4a;border-radius:4px;padding:10px;font-size:10px;color:#3a7a9a;max-height:120px;overflow-y:auto}
 .log-ok{color:#34d399}.log-warn{color:#fbbf24}.log-err{color:#f87171}
@@ -1292,6 +1314,29 @@ canvas#cvs{position:absolute;top:28px;left:0;pointer-events:none;z-index:5}
 
 </div>
 
+
+<!-- Column Mapping Confirmation Modal -->
+<div id="colMapModal">
+  <div class="col-map-box">
+    <div class="col-map-title">⬡ 欄位對應確認</div>
+    <div class="col-map-sub">系統自動偵測到以下欄位對應，請確認是否正確。如有誤，請手動選擇正確欄位。</div>
+    <table class="col-map-table">
+      <thead>
+        <tr>
+          <th>欄位</th>
+          <th>偵測結果</th>
+          <th>手動指定</th>
+        </tr>
+      </thead>
+      <tbody id="colMapRows"></tbody>
+    </table>
+    <div class="col-map-btns">
+      <button class="btn" onclick="cancelColMap()">取消</button>
+      <button class="btn active" onclick="confirmColMap()">✓ 確認並匯入</button>
+    </div>
+  </div>
+</div>
+
 <!-- API Key Modal -->
 <div class="modal-overlay hidden" id="apiModal">
   <div class="modal">
@@ -1410,41 +1455,93 @@ function parseWorkbook(wb, filename) {
   const ws = wb.Sheets[sheetName];
   const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
 
-  // find header row (has ID + Task Name)
+  // ── Fuzzy header matching rules ──
+  const COL_RULES = {
+    id:     { patterns: [/^id$/i, /^#$/, /^no\.?$/i, /^序號$/, /^識別碼$/, /^item$/i], label:'ID' },
+    task:   { patterns: [/task.?name/i, /^task$/i, /^name$/i, /^工作項目$/, /^任務$/, /^description$/i, /^活動名稱$/, /^工作$/], label:'Task Name' },
+    dur:    { patterns: [/^duration$/i, /^dur$/i, /^工期$/, /^天數$/, /^days$/i, /^持續時間$/], label:'Duration' },
+    start:  { patterns: [/^start$/i, /start.?date/i, /^開始$/, /^開始日期$/, /^es$/i, /^計畫開始$/], label:'Start' },
+    finish: { patterns: [/^finish$/i, /^end$/i, /end.?date/i, /finish.?date/i, /^完成$/, /^結束$/, /^結束日期$/, /^完成日期$/, /^ef$/i, /^計畫完成$/], label:'Finish' },
+    pred:   { patterns: [/predecessor/i, /^pred$/i, /^前置$/,  /^依賴$/, /^dependency$/i, /^前置作業$/], label:'Predecessors' },
+  };
+
+  function matchCol(headers, rules) {
+    return headers.findIndex(h => h && rules.some(r => r.test(String(h).trim())));
+  }
+
+  // find header row — now also accepts 識別碼 for ID
   let headerRow = -1;
   for (let i = 0; i < Math.min(10, raw.length); i++) {
     const r = raw[i];
     if (!r) continue;
-    const hasId = r.some(c => c && String(c).trim().toUpperCase() === 'ID');
-    const hasTask = r.some(c => c && /task.?name/i.test(String(c)));
+    const hasId   = r.some(c => c && COL_RULES.id.patterns.some(p => p.test(String(c).trim())));
+    const hasTask = r.some(c => c && COL_RULES.task.patterns.some(p => p.test(String(c).trim())));
     if (hasId && hasTask) { headerRow = i; break; }
   }
 
   if (headerRow === -1) {
-    warn('找不到標題列（需要 ID、Task Name 欄位）');
+    warn('找不到標題列（需要 ID/識別碼 和 Task Name/任務 欄位）');
     showWarnings(); return;
   }
   log('ok', `標題列位於第 ${headerRow+1} 行`);
 
-  // map column indices
-  const headers = raw[headerRow].map(h => h ? String(h).trim().toLowerCase() : '');
-  const col = {
-    id: headers.findIndex(h => h === 'id'),
-    task: headers.findIndex(h => /task.?name/.test(h)),
-    dur: headers.findIndex(h => h === 'duration'),
-    start: headers.findIndex(h => h === 'start'),
-    finish: headers.findIndex(h => h === 'finish'),
-    pred: headers.findIndex(h => /predecessor/.test(h))
+  // fuzzy map columns
+  const rawHeaders = raw[headerRow].map(h => h ? String(h).trim() : '');
+  const col = {};
+  Object.entries(COL_RULES).forEach(([key, rule]) => {
+    col[key] = rawHeaders.findIndex(h => rule.patterns.some(p => p.test(h)));
+  });
+
+  // confidence check — build detection report
+  const colReport = Object.entries(COL_RULES).map(([key, rule]) => ({
+    key,
+    label: rule.label,
+    found: col[key] !== -1,
+    colName: col[key] !== -1 ? rawHeaders[col[key]] : null,
+    colIdx: col[key],
+    required: ['id','task','start','finish'].includes(key)
+  }));
+
+  // check required cols
+  const missing = colReport.filter(c => c.required && !c.found);
+  if (missing.length > 0) {
+    warn('找不到必要欄位：' + missing.map(c => c.label).join('、'));
+    showWarnings(); return;
+  }
+
+  log('ok', `欄位對應：` + colReport.filter(c=>c.found).map(c=>`${c.label}="${c.colName}"`).join(' | '));
+
+  // show confirmation modal
+  showColMapModal(colReport, rawHeaders, wb, filename);
+}
+
+// called after user confirms column mapping
+function parseWorkbookWithCols(wb, filename, userCol) {
+  const raw = XLSX.utils.sheet_to_json(wb.Sheets[
+    wb.SheetNames.find(n => /schedule/i.test(n)) || wb.SheetNames[0]
+  ], { header: 1, defval: null, raw: false });
+
+  // find headerRow again
+  let headerRow = -1;
+  const COL_RULES_2 = {
+    id:   [/^id$/i, /^#$/, /^no\.?$/i, /^序號$/, /^識別碼$/, /^item$/i],
+    task: [/task.?name/i, /^task$/i, /^name$/i, /^工作項目$/, /^任務$/, /^description$/i],
   };
+  for (let i = 0; i < Math.min(10, raw.length); i++) {
+    const r = raw[i];
+    if (!r) continue;
+    const hasId   = r.some(c => c && COL_RULES_2.id.some(p => p.test(String(c).trim())));
+    const hasTask = r.some(c => c && COL_RULES_2.task.some(p => p.test(String(c).trim())));
+    if (hasId && hasTask) { headerRow = i; break; }
+  }
+  if (headerRow === -1) { showWarning(['找不到標題列']); return; }
 
-  if (col.id === -1) { warn('找不到 ID 欄位'); showWarnings(); return; }
-  if (col.task === -1) { warn('找不到 Task Name 欄位'); showWarnings(); return; }
-  if (col.start === -1) { warn('找不到 Start 欄位'); showWarnings(); return; }
-  if (col.finish === -1) { warn('找不到 Finish 欄位'); showWarnings(); return; }
+  const col = userCol; // use confirmed mapping
+  STATE.warnings = [];
+  STATE.logs = [];
+  log('ok', `使用確認欄位：ID=${col.id} Task=${col.task} Start=${col.start} Finish=${col.finish}`);
 
-  log('ok', `欄位對應：ID=${col.id} Task=${col.task} Start=${col.start} Finish=${col.finish} Pred=${col.pred}`);
-
-  // parse rows
+  // ── parse rows ──
   const tasks = [];
   const idSet = new Set();
   let dateErrCount = 0;
@@ -4703,6 +4800,92 @@ function setSampleData(data) {
     });
     calcSampleTotal(phase);
   });
+}
+
+
+// ─────────────────────────────────────────────
+// COLUMN MAPPING CONFIRMATION
+// ─────────────────────────────────────────────
+let _pendingParseData = null; // store wb + filename while waiting for confirmation
+
+function showColMapModal(colReport, rawHeaders, wb, filename) {
+  _pendingParseData = { wb, filename, colReport };
+
+  const tbody = document.getElementById('colMapRows');
+  if (!tbody) return;
+
+  const FIELD_LABELS = {
+    id:    { label:'ID / 識別碼', req:true },
+    task:  { label:'Task Name / 任務名稱', req:true },
+    dur:   { label:'Duration / 工期', req:false },
+    start: { label:'Start / 開始日期', req:true },
+    finish:{ label:'Finish / 結束日期', req:true },
+    pred:  { label:'Predecessors / 前置', req:false },
+  };
+
+  // build options from all headers
+  const headerOpts = rawHeaders.map((h,i) =>
+    `<option value="${i}" ${h ? '' : 'disabled'}>${h || '(空白)'}</option>`
+  ).join('');
+  const noneOpt = '<option value="-1">— 不對應 —</option>';
+
+  tbody.innerHTML = colReport.map(c => {
+    const fl = FIELD_LABELS[c.key] || { label:c.key, req:false };
+    const badge = fl.req
+      ? '<span class="col-req-badge col-req">必要</span>'
+      : '<span class="col-req-badge col-opt">選用</span>';
+    const detectedClass = c.found ? 'col-detected' : (fl.req ? 'col-detected miss' : 'col-detected optional');
+    const detectedText = c.found
+      ? `✓ "${c.colName}" (欄 ${c.colIdx+1})`
+      : fl.req ? '✗ 未偵測到' : '— 未偵測到';
+    const selectedVal = c.colIdx !== undefined && c.colIdx !== -1 ? c.colIdx : -1;
+    return `<tr>
+      <td class="col-field">${fl.label}${badge}</td>
+      <td><span class="${detectedClass}">${detectedText}</span></td>
+      <td>
+        <select class="col-select" id="colsel_${c.key}">
+          ${noneOpt}
+          ${rawHeaders.map((h,i) =>
+            `<option value="${i}" ${i === selectedVal ? 'selected' : ''}>${h||'(空)'} (欄${i+1})</option>`
+          ).join('')}
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('colMapModal').className = 'visible';
+}
+
+function cancelColMap() {
+  document.getElementById('colMapModal').className = '';
+  _pendingParseData = null;
+}
+
+function confirmColMap() {
+  if (!_pendingParseData) return;
+  const { wb, filename, colReport } = _pendingParseData;
+
+  // read user selections
+  const userCol = {};
+  colReport.forEach(c => {
+    const sel = document.getElementById('colsel_' + c.key);
+    userCol[c.key] = sel ? parseInt(sel.value) : -1;
+  });
+
+  // check required
+  const missing = colReport.filter(c =>
+    ['id','task','start','finish'].includes(c.key) && userCol[c.key] === -1
+  );
+  if (missing.length > 0) {
+    alert('必要欄位未指定：' + missing.map(c=>c.key).join('、'));
+    return;
+  }
+
+  document.getElementById('colMapModal').className = '';
+  _pendingParseData = null;
+
+  // proceed with confirmed column mapping
+  parseWorkbookWithCols(wb, filename, userCol);
 }
 
 </script>
